@@ -1,0 +1,224 @@
+﻿# Hilfsskript fuer ObsidianTodo-Setup.exe (wird vom Installer unsichtbar aufgerufen).
+#   detect    -Out <datei>                      Rainmeter, Obsidian und Vaults erkennen (key=value je Zeile)
+#   install   -What rainmeter|obsidian          offizielle neueste Version von GitHub laden und installieren
+#   apply     -App -Vault -TodoDir -RainmeterExe -SkinPath [-NewVault]
+#                                               Skin verknuepfen, settings.inc schreiben, Todo.md anlegen, starten
+#   uninstall -App                              Skin entfernen (Todo.md bleibt erhalten)
+param(
+    [Parameter(Mandatory)][ValidateSet('detect', 'resolve', 'install', 'apply', 'uninstall')][string]$Mode,
+    [string]$Out, [string]$What, [string]$File, [string]$App, [string]$Vault, [string]$TodoDir,
+    [string]$RainmeterExe, [string]$SkinPath, [switch]$NewVault
+)
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'   # sonst ist Invoke-WebRequest in PowerShell 5 extrem langsam
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$SkinName = 'ObsidianTodo'
+$log = Join-Path $env:TEMP 'ObsidianTodo-Setup.log'
+function Log($m) { Add-Content -LiteralPath $log -Value "$(Get-Date -Format s) [$Mode] $m" -Encoding UTF8 }
+
+function Find-Rainmeter {
+    # 1. laufendes Rainmeter (auch portable Installationen)
+    $p = Get-Process Rainmeter -ErrorAction SilentlyContinue | Select-Object -First 1
+    $exe = if ($p) { $p.Path }
+    # 2. normale Installation
+    if (-not $exe) {
+        foreach ($k in 'HKLM:\SOFTWARE\WOW6432Node\Rainmeter', 'HKLM:\SOFTWARE\Rainmeter', 'HKCU:\SOFTWARE\Rainmeter') {
+            $d = (Get-ItemProperty $k -ErrorAction SilentlyContinue).'(default)'
+            if ($d -and (Test-Path (Join-Path $d 'Rainmeter.exe'))) { $exe = Join-Path $d 'Rainmeter.exe'; break }
+        }
+    }
+    if (-not $exe -and (Test-Path "$env:ProgramFiles\Rainmeter\Rainmeter.exe")) { $exe = "$env:ProgramFiles\Rainmeter\Rainmeter.exe" }
+    if (-not $exe) { return $null }
+
+    # Einstellungsdatei: portable = neben der exe, sonst %APPDATA%\Rainmeter
+    $dir = Split-Path $exe
+    $ini = Join-Path $dir 'Rainmeter.ini'
+    if (-not (Test-Path $ini)) { $ini = Join-Path $env:APPDATA 'Rainmeter\Rainmeter.ini' }
+    $skins = $null
+    if (Test-Path $ini) {
+        $line = Select-String -LiteralPath $ini -Pattern '^\s*SkinPath\s*=\s*(.+)$' | Select-Object -First 1
+        if ($line) { $skins = $line.Matches[0].Groups[1].Value.Trim() }
+    }
+    if (-not $skins) { $skins = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Rainmeter\Skins\' }
+    [pscustomobject]@{ Exe = $exe; Skins = $skins.TrimEnd('\'); Ini = $ini }
+}
+
+function Find-Obsidian {
+    foreach ($c in "$env:LOCALAPPDATA\Programs\Obsidian\Obsidian.exe", "$env:LOCALAPPDATA\Obsidian\Obsidian.exe", "$env:ProgramFiles\Obsidian\Obsidian.exe") {
+        if (Test-Path $c) { return $c }
+    }
+    $cmd = (Get-ItemProperty 'Registry::HKEY_CLASSES_ROOT\obsidian\shell\open\command' -ErrorAction SilentlyContinue).'(default)'
+    if ($cmd -match '^"([^"]+)"') { return $Matches[1] }
+    $null
+}
+
+function Get-ObsidianConfig {
+    $f = Join-Path $env:APPDATA 'obsidian\obsidian.json'
+    if (Test-Path $f) { try { return Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json } catch {} }
+    $null
+}
+
+$Sources = @{
+    rainmeter = @('rainmeter/rainmeter', '^Rainmeter-[\d.]+(-r\d+)?\.exe$')
+    obsidian  = @('obsidianmd/obsidian-releases', '^Obsidian-[\d.]+\.exe$')
+}
+
+function Find-LatestAsset($repo, $pattern) {
+    $rel = Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest" -Headers @{ 'User-Agent' = 'ObsidianTodo-Setup' } -UseBasicParsing
+    $a = $rel.assets | Where-Object { $_.name -match $pattern } | Select-Object -First 1
+    if (-not $a) { throw "Keine passende Datei im neuesten Release von $repo" }
+    $a
+}
+
+function Get-LatestAsset($repo, $pattern) {
+    $a = Find-LatestAsset $repo $pattern
+    $file = Join-Path $env:TEMP $a.name
+    Invoke-WebRequest $a.browser_download_url -OutFile $file -UseBasicParsing
+    if ($a.digest -match '^sha256:([0-9a-f]{64})$' -and (Get-FileHash $file -Algorithm SHA256).Hash.ToLower() -ne $Matches[1]) {
+        throw "Pruefsumme von $($a.name) stimmt nicht"
+    }
+    $file
+}
+
+function Url($s) { [Uri]::EscapeDataString($s) }
+
+try {
+    switch ($Mode) {
+        'detect' {
+            $rm = Find-Rainmeter
+            $lines = @()
+            if ($rm) { $lines += "RainmeterExe=$($rm.Exe)"; $lines += "SkinPath=$($rm.Skins)" }
+            $obs = Find-Obsidian
+            if ($obs) { $lines += "ObsidianExe=$obs" }
+            $cfg = Get-ObsidianConfig
+            if ($cfg -and $cfg.vaults) {
+                foreach ($v in $cfg.vaults.PSObject.Properties.Value) {
+                    if ($v.path -and (Test-Path -LiteralPath $v.path)) {
+                        $lines += "Vault=$($v.path)"
+                        # vorhandene Todo.md im Vault suchen (Hauptordner oder eine Ebene tiefer)
+                        $t = Get-ChildItem -LiteralPath $v.path -Filter 'Todo.md' -File -Depth 1 -ErrorAction SilentlyContinue | Select-Object -First 1
+                        if ($t) { $lines += "TodoIn=$($v.path)|$($t.DirectoryName)" }
+                    }
+                }
+            }
+            [IO.File]::WriteAllLines($Out, $lines, (New-Object Text.UTF8Encoding($false)))
+        }
+
+        'resolve' {
+            # nur Adresse, Dateiname und Pruefsumme ermitteln - den Download macht der Installer mit Fortschrittsanzeige
+            $a = Find-LatestAsset $Sources[$What][0] $Sources[$What][1]
+            $sha = if ($a.digest -match '^sha256:([0-9a-f]{64})$') { $Matches[1] } else { '' }
+            [IO.File]::WriteAllLines($Out, @("Url=$($a.browser_download_url)", "Name=$($a.name)", "Sha=$sha", "Size=$($a.size)"), (New-Object Text.UTF8Encoding($false)))
+        }
+
+        'install' {
+            if ($What -eq 'rainmeter') {
+                $f = if ($File) { $File } else { Get-LatestAsset $Sources.rainmeter[0] $Sources.rainmeter[1] }
+                Log "Installiere $f"
+                # Rainmeter installiert nach Programme und braucht dafuer Adminrechte (UAC-Abfrage)
+                $p = Start-Process $f -ArgumentList '/S', '/AUTOSTARTUP=1', '/RESTART=0' -Verb RunAs -Wait -PassThru
+                if ($p.ExitCode -ne 0) { throw "Rainmeter-Setup Exitcode $($p.ExitCode)" }
+            } elseif ($What -eq 'obsidian') {
+                $f = if ($File) { $File } else { Get-LatestAsset $Sources.obsidian[0] $Sources.obsidian[1] }
+                Log "Installiere $f"
+                $p = Start-Process $f -ArgumentList '/S' -Wait -PassThru
+                if ($p.ExitCode -ne 0) { throw "Obsidian-Setup Exitcode $($p.ExitCode)" }
+            }
+        }
+
+        'apply' {
+            $res = Join-Path $App "$SkinName\@Resources"
+            New-Item -ItemType Directory -Force $Vault, $TodoDir | Out-Null
+
+            # neuer Vault: Obsidian erkennt den Ordner an .obsidian und kennt ihn ueber obsidian.json
+            if ($NewVault) { New-Item -ItemType Directory -Force (Join-Path $Vault '.obsidian') | Out-Null }
+            $cfgFile = Join-Path $env:APPDATA 'obsidian\obsidian.json'
+            $cfg = Get-ObsidianConfig
+            if (-not $cfg) { $cfg = [pscustomobject]@{ vaults = [pscustomobject]@{} } }
+            if (-not $cfg.vaults) { $cfg | Add-Member vaults ([pscustomobject]@{}) -Force }
+            $known = $cfg.vaults.PSObject.Properties.Value | Where-Object { $_.path -and ($_.path.TrimEnd('\') -eq $Vault.TrimEnd('\')) }
+            if (-not $known) {
+                $id = -join ((1..16) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
+                $ts = [DateTimeOffset]::Now.ToUnixTimeMilliseconds()
+                $cfg.vaults | Add-Member $id ([pscustomobject]@{ path = $Vault.TrimEnd('\'); ts = $ts })
+                New-Item -ItemType Directory -Force (Split-Path $cfgFile) | Out-Null
+                [IO.File]::WriteAllText($cfgFile, ($cfg | ConvertTo-Json -Depth 10 -Compress), (New-Object Text.UTF8Encoding($false)))
+                Log "Vault registriert: $Vault"
+            }
+
+            # Todo-Dateien nur anlegen, wenn es sie noch nicht gibt
+            $todo = Join-Path $TodoDir 'Todo.md'
+            $archive = Join-Path $TodoDir 'Todo-Archiv.md'
+            $utf8 = New-Object Text.UTF8Encoding($false)
+            if (-not (Test-Path -LiteralPath $todo)) { [IO.File]::WriteAllText($todo, "# Todo`n`n- [ ] Mein erster Punkt`n", $utf8) }
+            if (-not (Test-Path -LiteralPath $archive)) { [IO.File]::WriteAllText($archive, "# Todo-Archiv`n", $utf8) }
+
+            # settings.inc: alle benutzerabhaengigen Werte fuer den Skin (UTF-16 LE wie alle Rainmeter-Dateien)
+            $vaultName = Split-Path $Vault.TrimEnd('\') -Leaf
+            $inc = "[Variables]`r`nTodoFile=$todo`r`nArchiveFile=$archive`r`nVaultName=$vaultName`r`nTodoUrl=$(Url $todo)`r`nArchiveUrl=$(Url $archive)`r`n"
+            [IO.File]::WriteAllText((Join-Path $res 'settings.inc'), $inc, [Text.Encoding]::Unicode)
+
+            # Skin im Rainmeter-Skins-Ordner per Verzeichnisverknuepfung (Junction, keine Adminrechte noetig)
+            $link = Join-Path $SkinPath $SkinName
+            $target = Join-Path $App $SkinName
+            if (Test-Path -LiteralPath $link) {
+                $item = Get-Item -LiteralPath $link -Force
+                if ($item.LinkType -ne 'Junction') {
+                    # alter, von Hand eingerichteter Skin: zur Sicherheit umbenennen statt loeschen
+                    $bak = "$link-alt-$(Get-Date -Format yyyyMMdd-HHmmss)"
+                    Rename-Item -LiteralPath $link -NewName (Split-Path $bak -Leaf)
+                    Log "Alter Skin gesichert als $bak"
+                } else { cmd /c rmdir "`"$link`"" | Out-Null }
+            }
+            New-Item -ItemType Directory -Force $SkinPath | Out-Null
+            cmd /c mklink /J "`"$link`"" "`"$target`"" | Out-Null
+
+            # Knoepfe in den Erinnerungen (todo-rm:done/<id>) -> toast-action.vbs
+            $cmdKey = 'HKCU:\Software\Classes\todo-rm'
+            New-Item -Path "$cmdKey\shell\open\command" -Force | Out-Null
+            Set-ItemProperty $cmdKey -Name '(default)' -Value 'URL:Obsidian Todo'
+            Set-ItemProperty $cmdKey -Name 'URL Protocol' -Value ''
+            Set-ItemProperty "$cmdKey\shell\open\command" -Name '(default)' -Value "wscript.exe `"$res\toast-action.vbs`" `"%1`" `"$RainmeterExe`""
+
+            # Rainmeter starten bzw. Skin neu laden und aktivieren
+            if (-not (Get-Process Rainmeter -ErrorAction SilentlyContinue)) {
+                Start-Process $RainmeterExe
+                for ($i = 0; $i -lt 30 -and -not (Get-Process Rainmeter -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 500 }
+                Start-Sleep -Seconds 3
+            }
+            # schon mal eingerichtet? Dann bleibt die Position, die der Nutzer gewaehlt hat
+            $rmInfo = Find-Rainmeter
+            $known = $rmInfo -and $rmInfo.Ini -and (Test-Path $rmInfo.Ini) -and
+                (Select-String -LiteralPath $rmInfo.Ini -Pattern "^\[$SkinName\]\s*$" -Quiet)
+            & $RainmeterExe '!RefreshApp'
+            Start-Sleep -Seconds 2
+            & $RainmeterExe '!ActivateConfig' $SkinName 'Todo.ini'
+            if (-not $known) {
+                # Erstinstallation: oben rechts statt oben links ueber den Desktop-Symbolen
+                Start-Sleep -Seconds 1
+                & $RainmeterExe '!SetWindowPosition' '99%' '6%' '100%' '0%' $SkinName
+            }
+            Log "Fertig: $todo"
+        }
+
+        'uninstall' {
+            $rm = Find-Rainmeter
+            if ($rm -and (Get-Process Rainmeter -ErrorAction SilentlyContinue)) {
+                foreach ($c in "$SkinName\Formular", "$SkinName\Hilfe", $SkinName) { & $rm.Exe '!DeactivateConfig' $c }
+                Start-Sleep -Seconds 1
+            }
+            Get-Process TodoHotkey -ErrorAction SilentlyContinue | Stop-Process -Force
+            if ($rm) {
+                $link = Join-Path $rm.Skins $SkinName
+                $item = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
+                if ($item -and $item.LinkType -eq 'Junction') { cmd /c rmdir "`"$link`"" | Out-Null }
+            }
+            Remove-Item 'HKCU:\Software\Classes\todo-rm' -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item (Join-Path $env:LOCALAPPDATA 'ObsidianTodo') -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+    exit 0
+} catch {
+    Log "FEHLER: $_"
+    exit 1
+}

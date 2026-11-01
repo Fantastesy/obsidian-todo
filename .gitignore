@@ -1,0 +1,4 @@
+dist/
+*.exe
+sandbox-out/
+*.wsb
