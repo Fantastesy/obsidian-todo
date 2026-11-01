@@ -32,7 +32,7 @@ ContextAction=$obs
 Name=Obsidian Todo
 Author=Obsidian Todo
 Version=$Version
-License=MIT
+License=PolyForm Noncommercial 1.0.0
 Information=Zeigt die Checkboxen aus Todo.md im Obsidian-Vault an.
 
 [Variables]

@@ -79,4 +79,8 @@ Für ein Release: Version in `VERSION` erhöhen, beide Builds ausführen, Releas
 
 ## Lizenz
 
-MIT – siehe [LICENSE](LICENSE). Rainmeter (GPL-2.0) und Obsidian werden nicht mitgeliefert, sondern bei Bedarf von den offiziellen Quellen geladen.
+[PolyForm Noncommercial 1.0.0](LICENSE): Du darfst Obsidian To-do kostenlos benutzen, verändern und weitergeben – privat, in der Schule, im Verein oder in anderen nicht-kommerziellen Einrichtungen. **Verkaufen oder kommerziell einsetzen ist nicht erlaubt.** Für eine kommerzielle Nutzung bitte den Urheber über GitHub fragen.
+
+Versionen bis einschließlich Commit `d905f10` (1. November 2026) wurden unter der MIT-Lizenz veröffentlicht; für diese Stände gilt weiterhin MIT.
+
+Rainmeter (GPL-2.0) und Obsidian werden nicht mitgeliefert, sondern bei Bedarf von den offiziellen Quellen geladen.
