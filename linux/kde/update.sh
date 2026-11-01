@@ -1,12 +1,13 @@
 #!/bin/sh
 # Automatische Updates fuer Obsidian Todo (KDE).
 # Wird vom Widget beim Start und alle 6 Stunden aufgerufen, fragt aber hoechstens alle 6 Stunden bei GitHub.
-# Gibt es ein neueres Release, wird ObsidianTodo-KDE-Setup.sh geladen, die SHA-256-Pruefsumme
+# Gibt es ein neueres Release, wird ObsidianTodo-KDE-Setup-<version>.sh geladen, die SHA-256-Pruefsumme
 # verglichen und das Setup mit --silent ausgefuehrt. Einstellungen und Todo-Liste bleiben unveraendert.
 DIR="${XDG_DATA_HOME:-$HOME/.local/share}/obsidian-todo"
 STAMP="$DIR/last-update-check"
 LOG="$DIR/update.log"
-ASSET="ObsidianTodo-KDE-Setup.sh"
+# Name mit oder ohne Versionsnummer: ObsidianTodo-KDE-Setup-1.2.0.sh
+ASSET_RE='^ObsidianTodo-KDE-Setup(-[0-9.]+)?\.sh$'
 
 log() { printf '%s %s\n' "$(date +%FT%T)" "$*" >> "$LOG"; }
 
@@ -28,14 +29,14 @@ TAG="$(printf '%s' "$json" | grep -o '"tag_name": *"[^"]*"' | head -1 | sed 's/.
 
 # Download-Adresse und Pruefsumme der Setup-Datei
 if command -v python3 >/dev/null 2>&1; then
-    info="$(printf '%s' "$json" | python3 -c 'import json,sys
+    info="$(printf '%s' "$json" | python3 -c 'import json,re,sys
 for a in json.load(sys.stdin).get("assets",[]):
-    if a.get("name")==sys.argv[1]: print(a.get("browser_download_url","")); print((a.get("digest") or "").replace("sha256:",""))' "$ASSET")"
+    if re.match(sys.argv[1], a.get("name","")): print(a.get("browser_download_url","")); print((a.get("digest") or "").replace("sha256:","")); break' "$ASSET_RE")"
     URL="$(printf '%s\n' "$info" | sed -n 1p)"; SHA="$(printf '%s\n' "$info" | sed -n 2p)"
 else
-    URL="$(printf '%s' "$json" | grep -o "\"browser_download_url\": *\"[^\"]*/$ASSET\"" | head -1 | sed 's/.*"\(https[^"]*\)"/\1/')"; SHA=""
+    URL="$(printf '%s' "$json" | grep -oE "\"browser_download_url\": *\"[^\"]*/ObsidianTodo-KDE-Setup(-[0-9.]+)?\.sh\"" | head -1 | sed 's/.*"\(https[^"]*\)"/\1/')"; SHA=""
 fi
-[ -n "$URL" ] || { log "Release $TAG ohne $ASSET"; exit 0; }
+[ -n "$URL" ] || { log "Release $TAG ohne KDE-Setup"; exit 0; }
 
 TMP="$(mktemp)"
 get "$URL" > "$TMP" || { log "Download fehlgeschlagen"; rm -f "$TMP"; exit 0; }

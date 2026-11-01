@@ -16,7 +16,8 @@ if (-not $Repo -and (Test-Path (Join-Path $root 'REPO'))) { $Repo = (Get-Content
 
 Write-Host "Obsidian Todo $version"
 # nur die eigenen Ausgaben loeschen (das Linux-Setup liegt auch in dist\)
-foreach ($old in (Join-Path $dist 'skin'), (Join-Path $dist 'ObsidianTodo-Setup.exe')) { if (Test-Path $old) { Remove-Item $old -Recurse -Force } }
+if (Test-Path (Join-Path $dist 'skin')) { Remove-Item (Join-Path $dist 'skin') -Recurse -Force }
+Get-ChildItem $dist -Filter 'ObsidianTodo-Setup*.exe' -ErrorAction SilentlyContinue | Remove-Item -Force
 New-Item -ItemType Directory -Force $res | Out-Null
 
 # 1. Rainmeter-Dateien erzeugen
@@ -44,4 +45,4 @@ if (-not $Iscc) {
 if (-not $Iscc) { throw 'ISCC.exe (Inno Setup 7) nicht gefunden - Pfad mit -Iscc angeben' }
 & $Iscc /Q "/DAppVersion=$version" (Join-Path $root 'installer\ObsidianTodo.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup meldet einen Fehler' }
-Write-Host "Fertig: $(Join-Path $dist 'ObsidianTodo-Setup.exe')"
+Write-Host "Fertig: $(Join-Path $dist "ObsidianTodo-Setup-$version.exe")"

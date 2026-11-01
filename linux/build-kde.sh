@@ -18,7 +18,8 @@ printf '%s\n' "$repo" > "$tmp/repo.txt"
 sed -i "s/\"Version\": \"[^\"]*\"/\"Version\": \"$ver\"/" "$tmp/package/metadata.json"
 find "$tmp" -type f \( -name '*.qml' -o -name '*.js' -o -name '*.sh' -o -name '*.json' \) -exec sed -i 's/\r$//' {} +
 
-f="$out/ObsidianTodo-KDE-Setup.sh"
+rm -f "$out"/ObsidianTodo-KDE-Setup*.sh
+f="$out/ObsidianTodo-KDE-Setup-$ver.sh"
 sed 's/\r$//' "$root/linux/kde/setup.sh" > "$f"
 printf '\n__PAYLOAD_BELOW__\n' >> "$f"
 tar -C "$tmp" -cz package update.sh version.txt repo.txt | base64 >> "$f"

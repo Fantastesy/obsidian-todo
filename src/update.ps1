@@ -1,6 +1,6 @@
 ﻿# Automatische Updates fuer Obsidian Todo.
 # Wird vom Skin beim Laden und alle 6 Stunden gestartet (MeasureUpdate), fragt aber hoechstens
-# alle 6 Stunden bei GitHub nach. Gibt es ein neueres Release, wird ObsidianTodo-Setup.exe
+# alle 6 Stunden bei GitHub nach. Gibt es ein neueres Release, wird ObsidianTodo-Setup-<version>.exe
 # geladen, die SHA-256-Pruefsumme verglichen und das Setup unsichtbar ausgefuehrt.
 # Einstellungen und die Todo-Liste bleiben dabei unveraendert.
 $ErrorActionPreference = 'Stop'
@@ -31,8 +31,9 @@ try {
     $latest = [version]($rel.tag_name -replace '^v', '')
     if ($latest -le $current) { exit 0 }
 
-    $asset = $rel.assets | Where-Object { $_.name -eq 'ObsidianTodo-Setup.exe' } | Select-Object -First 1
-    if (-not $asset) { Log "Release $($rel.tag_name) ohne ObsidianTodo-Setup.exe"; exit 0 }
+    # Name mit oder ohne Versionsnummer: ObsidianTodo-Setup-1.2.0.exe
+    $asset = $rel.assets | Where-Object { $_.name -match '^ObsidianTodo-Setup(-[\d.]+)?\.exe$' } | Select-Object -First 1
+    if (-not $asset) { Log "Release $($rel.tag_name) ohne Windows-Setup"; exit 0 }
 
     $setup = Join-Path $env:TEMP "ObsidianTodo-Setup-$latest.exe"
     Invoke-WebRequest $asset.browser_download_url -OutFile $setup -UseBasicParsing

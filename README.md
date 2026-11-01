@@ -12,7 +12,7 @@ Eine Todo-Liste für den Desktop, die direkt als Markdown in deinem [Obsidian](h
 
 ## Installation unter Windows
 
-1. `ObsidianTodo-Setup.exe` aus den [Releases](../../releases/latest) herunterladen und starten.
+1. `ObsidianTodo-Setup-<version>.exe` aus den [Releases](../../releases/latest) herunterladen und starten.
 2. Speicherort wählen, Vault auswählen (oder neuen anlegen) – fertig.
 
 Der Installer
@@ -25,11 +25,11 @@ Windows zeigt beim ersten Start evtl. „Der Computer wurde durch Windows gesch�
 
 ## Installation unter Linux (KDE Plasma 6)
 
-Funktioniert auf jeder Distribution mit KDE Plasma 6 (Kubuntu, Fedora KDE, KDE neon, openSUSE, Manjaro/Arch KDE …). `ObsidianTodo-KDE-Setup.sh` aus den [Releases](../../releases/latest) herunterladen, dann:
+Funktioniert auf jeder Distribution mit KDE Plasma 6 (Kubuntu, Fedora KDE, KDE neon, openSUSE, Manjaro/Arch KDE …). `ObsidianTodo-KDE-Setup-<version>.sh` aus den [Releases](../../releases/latest) herunterladen, dann:
 
 ```bash
-chmod +x ObsidianTodo-KDE-Setup.sh
-./ObsidianTodo-KDE-Setup.sh
+chmod +x ObsidianTodo-KDE-Setup-*.sh
+./ObsidianTodo-KDE-Setup-*.sh
 ```
 
 Das Setup
@@ -46,7 +46,7 @@ Windows und KDE prüfen beim Start und danach alle 6 Stunden, ob es ein neues Re
 
 ## Deinstallation
 
-Windows: über Einstellungen → Apps. Linux: `./ObsidianTodo-KDE-Setup.sh --uninstall`. `Todo.md` und `Todo-Archiv.md` in deinem Vault bleiben in beiden Fällen erhalten.
+Windows: über Einstellungen → Apps. Linux: Startmenü → „Obsidian To-do entfernen“ oder Rechtsklick auf die Liste. `Todo.md` und `Todo-Archiv.md` in deinem Vault bleiben in beiden Fällen erhalten.
 
 ## Selbst bauen
 
@@ -59,7 +59,7 @@ powershell -File build.ps1            # -> dist\ObsidianTodo-Setup.exe
 KDE-Setup (Linux oder WSL):
 
 ```bash
-bash linux/build-kde.sh               # -> dist/ObsidianTodo-KDE-Setup.sh
+bash linux/build-kde.sh               # -> dist/ObsidianTodo-KDE-Setup-<version>.sh
 node linux/tests/core-test.js         # Tests für die Logik der KDE-Version
 ```
 
