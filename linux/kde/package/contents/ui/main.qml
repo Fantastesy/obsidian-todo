@@ -44,27 +44,40 @@ PlasmoidItem {
     toolTipSubText: model ? model.openCount + " offen" : ""
     switchWidth: Kirigami.Units.gridUnit * 14
     switchHeight: Kirigami.Units.gridUnit * 10
-    // Desktop und senkrechte Seitenleiste: ganze Liste; waagerechte Leiste: Symbol mit Zahl
-    preferredRepresentation: Plasmoid.formFactor === PlasmaCore.Types.Horizontal ? compactRepresentation : fullRepresentation
-    readonly property bool inPanel: Plasmoid.formFactor === PlasmaCore.Types.Vertical
+    // Desktop: ganze Liste. Leiste: schmaler Streifen; die Liste klappt als Popup daneben auf.
+    // (Die ganze Liste IN einer Leiste geht nicht: KDE begrenzt die Leistenbreite, und das Umschalten
+    //  zwischen Symbol und Liste schaukelte sich mit der Leistengroesse zu einer Dauerschleife auf.)
+    preferredRepresentation: Plasmoid.formFactor === PlasmaCore.Types.Planar ? fullRepresentation : compactRepresentation
+    readonly property bool inPanel: Plasmoid.formFactor === PlasmaCore.Types.Vertical || Plasmoid.formFactor === PlasmaCore.Types.Horizontal
 
     // ---------- Einblenden beim Anmelden / Aufwachen / Entsperren ----------
-    // In der Seitenleiste (automatisch ausblenden) faehrt KDE die Leiste heraus, solange das Widget
-    // "Aufmerksamkeit" meldet: 10 Sekunden pro offenem Punkt, hoechstens 2 Minuten.
+    // In der Seitenleiste klappt die Liste auf (die Leiste faehrt dafuer heraus):
+    // 10 Sekunden pro offenem Punkt, hoechstens 2 Minuten.
     property bool revealed: false
     property bool startupRevealDone: false
+    // per Maus/Einblenden geoeffnet -> klappt von selbst wieder zu, sobald die Maus die Liste verlaesst
+    property bool autoOpened: false
+    // Nur aufklappen - KDE faehrt die (automatisch ausgeblendete) Leiste dafuer selbst heraus.
+    // Den Status NICHT selbst auf "Aufmerksamkeit" setzen: KDE merkt sich beim Aufklappen den Status
+    // und stellt ihn beim Zuklappen wieder her - dann bliebe die Leiste dauerhaft sichtbar.
     function reveal() {
-        if (!model || model.openCount === 0) return;
+        if (!model || model.openCount === 0 || !inPanel) return;
         revealTimer.interval = Math.min(120, 10 * model.openCount) * 1000;
         revealed = true;
-        Plasmoid.status = PlasmaCore.Types.RequiresAttentionStatus;
+        autoOpened = true;
+        root.expanded = true;
         revealTimer.restart();
     }
     function hideReveal() {
         revealTimer.stop();
         revealed = false;
-        Plasmoid.status = PlasmaCore.Types.ActiveStatus;
+        if (autoOpened) { root.expanded = false; autoOpened = false; }
     }
+    // Maus hat die aufgeklappte Liste verlassen
+    function hoverLeft() { if (autoOpened && !revealed) closeTimer.restart(); }
+    function hoverEntered() { closeTimer.stop(); }
+    Timer { id: closeTimer; interval: 900; onTriggered: { if (root.autoOpened) { root.expanded = false; root.autoOpened = false; } } }
+    onExpandedChanged: if (!expanded) autoOpened = false
     Timer { id: revealTimer; onTriggered: root.hideReveal() }
 
     // Aufwachen: waehrend Standby laufen keine Timer -> grosse Luecke zwischen zwei Durchlaeufen
@@ -101,18 +114,30 @@ PlasmoidItem {
         PlasmaCore.Action { text: "Obsidian To-do entfernen …"; icon.name: "edit-delete"; onTriggered: root.runSetup("--uninstall") }
     ]
 
+    // Streifen in der Leiste: fuellt die ganze Leistenlaenge, damit die Maus beim Herausfahren
+    // sofort darueber ist; Drueberfahren klappt die Liste auf, Klick klappt auf/zu.
     compactRepresentation: MouseArea {
-        onClicked: root.expanded = !root.expanded
+        hoverEnabled: true
+        Layout.fillHeight: Plasmoid.formFactor === PlasmaCore.Types.Vertical
+        Layout.fillWidth: Plasmoid.formFactor === PlasmaCore.Types.Horizontal
+        Layout.minimumWidth: Kirigami.Units.iconSizes.small
+        Layout.minimumHeight: Kirigami.Units.iconSizes.small
+        onEntered: { root.hoverEntered(); if (!root.expanded) { root.autoOpened = true; root.expanded = true; } }
+        onExited: root.hoverLeft()
+        onClicked: { root.autoOpened = false; root.expanded = !root.expanded; }
         Kirigami.Icon {
-            anchors.fill: parent
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.topMargin: Kirigami.Units.smallSpacing
+            width: Math.min(parent.width, Kirigami.Units.iconSizes.medium)
+            height: width
             source: "checkbox"
         }
         PC3.Label {
             visible: root.model && root.model.openCount > 0
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: Kirigami.Units.iconSizes.medium + Kirigami.Units.smallSpacing * 2
             text: root.model ? root.model.openCount : ""
-            font.pixelSize: Math.max(8, parent.height * 0.4)
             font.bold: true
         }
     }

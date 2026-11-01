@@ -129,11 +129,9 @@ desktops().forEach(function (d) {
 if (wantPanel && !inPanel) {
     var p = new Panel;
     p.location = 'right';
-    p.height = Math.round(gridUnit * 24);
+    // schmaler Streifen ueber die ganze Hoehe; die Liste klappt beim Drueberfahren daneben auf
+    p.height = Math.round(gridUnit * 2);
     try { p.hiding = 'autohide'; } catch (e) {}
-    try { p.floating = true; } catch (e) {}
-    try { p.lengthMode = 'fit'; } catch (e) {}
-    try { p.alignment = 'center'; } catch (e) {}
     var pw = p.addWidget(id);
     pw.globalShortcut = '$SHORTCUT';
 }

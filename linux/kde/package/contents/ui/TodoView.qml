@@ -19,11 +19,14 @@ Rectangle {
     implicitWidth: Kirigami.Units.gridUnit * 24
     implicitHeight: col.implicitHeight + Kirigami.Units.largeSpacing * 2
     Layout.preferredWidth: implicitWidth
-    // in der Seitenleiste so breit wie die Leiste
-    Layout.fillWidth: app && app.inPanel
     Layout.minimumWidth: Kirigami.Units.gridUnit * 16
     Layout.preferredHeight: implicitHeight
     Layout.minimumHeight: implicitHeight
+
+    // aufgeklappt aus der Seitenleiste: Maus raus -> nach kurzer Zeit wieder zuklappen
+    HoverHandler {
+        onHoveredChanged: hovered ? view.app.hoverEntered() : view.app.hoverLeft()
+    }
 
     ColumnLayout {
         id: col
