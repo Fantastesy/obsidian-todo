@@ -1,107 +1,106 @@
-﻿# Laeuft IN der Windows-Sandbox: installiert ObsidianTodo-Setup.exe unbeaufsichtigt und prueft das Ergebnis.
+﻿# Laeuft IN der Windows-Sandbox: installiert ObsidianTodo-Setup.exe unbeaufsichtigt und prueft Seitenleiste,
+# Einblenden, Einstellungen und Deinstallation. Ergebnisse in Desktop\out (test.log + Bilder einzelner Fenster).
 $out = 'C:\Users\WDAGUtilityAccount\Desktop\out'
 $in = 'C:\Users\WDAGUtilityAccount\Desktop\ObsidianTodo-Test'
 $log = "$out\test.log"
 function W($s) { Add-Content -Path $log -Value $s -Encoding UTF8 }
-function Shot($name) {
-    Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-    $b = [Windows.Forms.Screen]::PrimaryScreen.Bounds
-    $bmp = New-Object Drawing.Bitmap $b.Width, $b.Height
-    [Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [Drawing.Point]::Empty, $b.Size)
-    $bmp.Save("$out\$name.png")
-}
-W "Start: $(Get-Date -Format s)"
 
+Add-Type -AssemblyName System.Drawing, System.Windows.Forms
+Add-Type @"
+using System; using System.Runtime.InteropServices; using System.Text;
+public class RW {
+    public delegate bool E(IntPtr h, IntPtr p);
+    [DllImport("user32.dll")] public static extern bool EnumWindows(E e, IntPtr p);
+    [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+    [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint f);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    public struct RECT { public int L, T, R, B; }
+}
+"@
+# Fenster eines Skins: sichtbar? wo? (Rainmeter benennt Skin-Fenster nach dem Pfad der .ini)
+function Find($end) {
+    $script:fw = $null
+    [RW]::EnumWindows({ param($h, $p) $t = New-Object Text.StringBuilder 512; [void][RW]::GetWindowText($h, $t, 512)
+        if ($t.ToString().EndsWith($end)) { $script:fw = $h }; return $true }, [IntPtr]::Zero) | Out-Null
+    $script:fw
+}
+function Win($end) {
+    $h = Find $end
+    if (-not $h) { return 'fehlt' }
+    $r = New-Object RW+RECT; [void][RW]::GetWindowRect($h, [ref]$r)
+    "sichtbar=$([RW]::IsWindowVisible($h)) [$($r.L),$($r.T) - $($r.R),$($r.B)]"
+}
+function Snap($end, $name) {
+    $h = Find $end
+    if (-not $h) { return }
+    $r = New-Object RW+RECT; [void][RW]::GetWindowRect($h, [ref]$r)
+    $w = [Math]::Max(1, $r.R - $r.L); $ht = [Math]::Max(1, $r.B - $r.T)
+    $b = New-Object Drawing.Bitmap $w, $ht; $g = [Drawing.Graphics]::FromImage($b); $g.Clear([Drawing.Color]::FromArgb(255, 70, 90, 120))
+    $dc = $g.GetHdc(); [void][RW]::PrintWindow($h, $dc, 2); $g.ReleaseHdc($dc); $b.Save("$out\$name.png")
+}
+$LIST = '\ObsidianTodo\Todo.ini'; $RAND = '\ObsidianTodo\Rand\Rand.ini'; $SET = '\ObsidianTodo\Einstellungen\Einstellungen.ini'
+$wa = [Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+W "Start: $(Get-Date -Format s)  Arbeitsbereich: $wa"
+
+# ---------- Installation ----------
 Copy-Item (Get-ChildItem "$in\ObsidianTodo-Setup*.exe" | Select-Object -First 1).FullName "$env:TEMP\setup.exe"
-# nicht -Wait: das wartet auch auf alle gestarteten Programme (Rainmeter laeuft dauerhaft weiter)
 $p = Start-Process "$env:TEMP\setup.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=$out\inno.log" -PassThru
 $p.WaitForExit()
 W "Setup Exitcode: $($p.ExitCode)"
-Start-Sleep -Seconds 15
-
-$rm = (Get-Process Rainmeter -ErrorAction SilentlyContinue | Select-Object -First 1).Path
-Shot 'nach-installation'
-Start-Sleep -Seconds 3
-# Rainmeter-Protokoll einschalten und neu starten
-$ini = "$env:APPDATA\Rainmeter\Rainmeter.ini"
-Stop-Process -Name Rainmeter -Force; Start-Sleep 2
-(Get-Content $ini) -replace '^\[Rainmeter\]$', "[Rainmeter]`r`nLogging=1`r`nDebug=1" | Set-Content $ini -Encoding Unicode
-Start-Process $rm; Start-Sleep 10
-Shot 'nach-neustart'
-W "Rainmeter.ini [ObsidianTodo]: $(((Get-Content $ini) -join '|') -replace '.*\[ObsidianTodo\]\|([^\[]*).*','$1')"
-# Diagnose: Rainmeter-Fenster, Sichtbarkeit je Ebene
-Add-Type @"
-using System; using System.Runtime.InteropServices; using System.Text;
-public class RW { public delegate bool E(IntPtr h, IntPtr p);
-[DllImport("user32.dll")] public static extern bool EnumWindows(E e, IntPtr p);
-[DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
-[DllImport("user32.dll")] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
-[DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
-[DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
-[DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint f);
-public struct RECT { public int L, T, R, B; } }
-"@
-function SkinShots {
-    Add-Type -AssemblyName System.Drawing
-    $hw = [IntPtr]::Zero
-    [RW]::EnumWindows({ param($h,$p) $t = New-Object Text.StringBuilder 256; [void][RW]::GetWindowText($h,$t,256); if ($t.ToString() -match 'ObsidianTodo\\Todo\.ini$') { $script:hw = $h }; return $true }, [IntPtr]::Zero) | Out-Null
-    $r = New-Object RW+RECT; [void][RW]::GetWindowRect($script:hw,[ref]$r); $w = $r.R - $r.L; $h = $r.B - $r.T
-    $b = New-Object Drawing.Bitmap $w, $h, ([Drawing.Imaging.PixelFormat]::Format32bppArgb); $g = [Drawing.Graphics]::FromImage($b); $g.Clear([Drawing.Color]::Magenta); $dc = $g.GetHdc(); $ok = [RW]::PrintWindow($script:hw, $dc, 2); $g.ReleaseHdc($dc); $b.Save("$out\skin-printwindow.png")
-    $b2 = New-Object Drawing.Bitmap $w, $h; [Drawing.Graphics]::FromImage($b2).CopyFromScreen($r.L, $r.T, 0, 0, $b2.Size, ([Drawing.CopyPixelOperation]::SourceCopy -bor [Drawing.CopyPixelOperation]::CaptureBlt)); $b2.Save("$out\skin-captureblt.png")
-    W "PrintWindow=$ok Groesse $w x $h"
-}
-function Wins {
-    $script:ws = @()
-    [RW]::EnumWindows({ param($h,$p) $c = New-Object Text.StringBuilder 256; [void][RW]::GetClassName($h,$c,256)
-        if ($c.ToString() -match 'Rainmeter') { $t = New-Object Text.StringBuilder 256; [void][RW]::GetWindowText($h,$t,256); $r = New-Object RW+RECT; [void][RW]::GetWindowRect($h,[ref]$r)
-            $script:ws += "$($t.ToString()) sichtbar=$([RW]::IsWindowVisible($h)) [$($r.L),$($r.T) - $($r.R),$($r.B)]" }; return $true }, [IntPtr]::Zero) | Out-Null
-    $script:ws -join ' || '
-}
-W "Fenster: $(Wins)"
-& $rm '!ZPos' '0' 'ObsidianTodo'; Start-Sleep 2; Shot 'ebene0'; W "Ebene 0: $(Wins)"
-& $rm '!ZPos' '2' 'ObsidianTodo'; Start-Sleep 2; Shot 'ebene2'
-& $rm '!ZPos' '-2' 'ObsidianTodo'; Start-Sleep 2
-SkinShots
-W "Rainmeter: $rm"
-W "TodoHotkey laeuft: $([bool](Get-Process TodoHotkey -ErrorAction SilentlyContinue))"
-$res = "$env:LOCALAPPDATA\Programs\Obsidian Todo\ObsidianTodo\@Resources"
-W "settings.inc: $(Test-Path "$res\settings.inc")  prefs.inc: $(Test-Path "$res\prefs.inc")"
-$task = Get-ScheduledTask -TaskName 'ObsidianTodo-Einblenden' -ErrorAction SilentlyContinue
-W "Aufgabe Einblenden: $(if ($task) { ($task.Triggers | ForEach-Object { $_.CimClass.CimClassName }) -join ', ' } else { 'FEHLT' })"
-W "Startmenue-Eintrag entfernen: $(Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Obsidian To-do entfernen.lnk")"
+Start-Sleep -Seconds 12
+$rm = (Get-Process Rainmeter | Select-Object -First 1).Path
 W "Helper-Log:"; Get-Content "$env:TEMP\ObsidianTodo-Setup.log" -ErrorAction SilentlyContinue | ForEach-Object { W "   $_" }
+W "Mauszeiger nach Installation: $([Windows.Forms.Cursor]::Position)"
+W "Nach Installation: Liste $(Win $LIST) | Rand $(Win $RAND)"
 
-# Grosses Fenster ueber die Liste legen (ohne Eingabefeld), dann Einblenden ausloesen
-Add-Type -AssemblyName System.Windows.Forms
-$form = New-Object Windows.Forms.Form
-$form.Text = 'Arbeitsfenster'; $form.WindowState = 'Maximized'; $form.BackColor = 'SteelBlue'
-$form.Show(); [Windows.Forms.Application]::DoEvents(); Start-Sleep -Seconds 6
-Shot 'vorher-verdeckt'
-& $rm '!CommandMeasure' 'MeasureTodo' 'Reveal()' 'ObsidianTodo'
-for ($i = 0; $i -lt 30; $i++) { Start-Sleep -Milliseconds 500; [Windows.Forms.Application]::DoEvents() }   # 15 s: Liste ueber dem blauen Fenster?
-Shot 'nachher-eingeblendet'
-# Ausblenden
-& $rm '!CommandMeasure' 'MeasureTodo' 'HideReveal()' 'ObsidianTodo'
-for ($i = 0; $i -lt 16; $i++) { Start-Sleep -Milliseconds 500; [Windows.Forms.Application]::DoEvents() }
-Shot 'ausgeblendet'
-$form.Close()
+# ---------- Seitenleiste: Maus an den rechten Rand ----------
+[RW]::SetCursorPos($wa.Right - 1, $wa.Top + 300) | Out-Null
+Start-Sleep -Milliseconds 120; [RW]::SetCursorPos($wa.Right - 1, $wa.Top + 310) | Out-Null
+Start-Sleep -Milliseconds 120
+W "Waehrend Hereinfahren: Liste $(Win $LIST)"
+Start-Sleep -Milliseconds 600
+W "Maus am Rand: Liste $(Win $LIST)"
+Snap $LIST 'seitenleiste'
+# Maus in die Liste, dann weg
+[RW]::SetCursorPos($wa.Right - 200, $wa.Top + 120) | Out-Null; Start-Sleep -Seconds 2
+W "Maus in der Liste (2 s): Liste $(Win $LIST)"
+[RW]::SetCursorPos($wa.Left + 300, $wa.Top + 300) | Out-Null; Start-Sleep -Seconds 3
+W "Maus weg (3 s): Liste $(Win $LIST)"
+# versteckt -> wieder an den Rand: muss hereinfahren
+[RW]::SetCursorPos($wa.Right - 1, $wa.Top + 500) | Out-Null; Start-Sleep -Milliseconds 100; [RW]::SetCursorPos($wa.Right - 1, $wa.Top + 520) | Out-Null
+Start-Sleep -Milliseconds 800
+W "Wieder an den Rand: Liste $(Win $LIST)"
+Snap $LIST 'rand-erneut'
+[RW]::SetCursorPos($wa.Left + 300, $wa.Top + 300) | Out-Null; Start-Sleep -Seconds 3
+W "Wieder weg: Liste $(Win $LIST)"
 
-# Breite umstellen wie im Hilfe-Fenster
-& $rm '!WriteKeyValue' 'Variables' 'Width' '560' "$env:USERPROFILE\Documents\Rainmeter\Skins\ObsidianTodo\@Resources\prefs.inc"
-& $rm '!Refresh' 'ObsidianTodo'
-Start-Sleep -Seconds 3
-Shot 'breit'
-W "prefs.inc: $((Get-Content "$res\prefs.inc" -Encoding Unicode) -join ' | ')"
+# ---------- Einblenden (wie beim Anmelden) ----------
+& $rm '!CommandMeasure' 'MeasureTodo' 'Reveal()' 'ObsidianTodo'; Start-Sleep -Seconds 2
+W "Einblenden: Liste $(Win $LIST)"
+Snap $LIST 'eingeblendet'
+Start-Sleep -Seconds 12
+W "Nach 14 s (1 Punkt = 10 s): Liste $(Win $LIST)"
 
-Copy-Item "$env:LOCALAPPDATA\Programs\Obsidian Todo\ObsidianTodo" "$out\installiert" -Recurse -ErrorAction SilentlyContinue
-# Deinstallieren
+# ---------- Einstellungen ----------
+& $rm '!ActivateConfig' 'ObsidianTodo\Einstellungen' 'Einstellungen.ini'; Start-Sleep -Seconds 3
+W "Einstellungen: $(Win $SET)"
+Snap $SET 'einstellungen'
+
+# ---------- Umschalten auf Desktop ----------
+$prefs = "$env:USERPROFILE\Documents\Rainmeter\Skins\ObsidianTodo\@Resources\prefs.inc"
+& $rm '!WriteKeyValue' 'Variables' 'Mode' 'desktop' $prefs; & $rm '!Refresh' 'ObsidianTodo'; Start-Sleep -Seconds 4
+W "Desktop-Modus: Liste $(Win $LIST) | Rand $(Win $RAND)"
+Snap $LIST 'desktop'
+W "prefs.inc: $((Get-Content $prefs -Encoding Unicode) -join ' | ')"
+
+# ---------- Deinstallation ----------
 $un = Get-ChildItem "$env:LOCALAPPDATA\Programs\Obsidian Todo\unins*.exe" | Select-Object -First 1
 $p = Start-Process $un.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES' -PassThru
 $p.WaitForExit(); Start-Sleep -Seconds 5
-W "Nach Deinstallation: Aufgabe=$([bool](Get-ScheduledTask -TaskName 'ObsidianTodo-Einblenden' -ErrorAction SilentlyContinue)) Programmordner=$(Test-Path "$env:LOCALAPPDATA\Programs\Obsidian Todo\ObsidianTodo") Todo.md=$(Test-Path "$env:USERPROFILE\Documents\Obsidian Vault\Todo.md")"
+W "Nach Deinstallation: Liste $(Win $LIST) | Rand $(Win $RAND) | Aufgabe=$([bool](Get-ScheduledTask -TaskName 'ObsidianTodo-Einblenden' -ErrorAction SilentlyContinue)) | Todo.md=$(Test-Path "$env:USERPROFILE\Documents\Obsidian Vault\Todo.md")"
 Copy-Item "$env:APPDATA\Rainmeter\Rainmeter.log" "$out\Rainmeter.log" -ErrorAction SilentlyContinue
-Copy-Item "$env:LOCALAPPDATA\Programs\Obsidian Todo" "$out\installiert" -Recurse -ErrorAction SilentlyContinue
 W "Ende: $(Get-Date -Format s)"
 Set-Content "$out\fertig.txt" 'ok'
-# Sandbox am Ende selbst schliessen
 shutdown.exe /s /t 3

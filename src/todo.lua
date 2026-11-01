@@ -42,6 +42,46 @@ function Initialize()
 	repeatIcon = SKIN:GetVariable('RepeatIcon')
 	timeIcon = SKIN:GetVariable('TimeIcon')
 	lastContent = nil
+	setupMode()
+end
+
+-- ---------- Anzeige-Art: 'sidebar' (Seitenleiste am rechten Rand), 'desktop', 'both' ----------
+-- Variable Mode aus prefs.inc (schreibt das Einstellungen-Fenster). Der Rand-Streifen (Config ObsidianTodo\Rand)
+-- wird hier mit ein- bzw. ausgeschaltet, damit es auch nach Updates ohne Installer-Zutun stimmt.
+local RAND = 'ObsidianTodo\\Rand'
+local mode, workH
+local hideOnFirstUpdate = false
+function setupMode()
+	mode = SKIN:GetVariable('Mode') or 'sidebar'
+	workH = tonumber(SKIN:GetVariable('WORKAREAHEIGHT')) or 1080
+	if mode == 'sidebar' then
+		-- versteckt, bis die Maus an den Rand kommt; darf ausserhalb des Bildschirms stehen (Animation)
+		SKIN:Bang('!KeepOnScreen', '0')
+		SKIN:Bang('!Draggable', '0')
+		SKIN:Bang('!ZPos', '2')
+		-- !Hide wirkt erst, wenn Rainmeter das Fenster angelegt hat -> im ersten Update
+		hideOnFirstUpdate = true
+	else
+		SKIN:Bang('!KeepOnScreen', '1')
+		SKIN:Bang('!Draggable', '1')
+		SKIN:Bang('!ZPos', '-2')
+		SKIN:Bang('!Show')
+		-- kommt von der Seitenleiste: wieder oben rechts auf den Desktop
+		if SKIN:GetVariable('LastMode') == 'sidebar' then
+			local right = (tonumber(SKIN:GetVariable('WORKAREAX')) or 0) + (tonumber(SKIN:GetVariable('WORKAREAWIDTH')) or 1920)
+			SKIN:Bang('!SetAnchor', '0', '0')
+			SKIN:Bang('!Move', right - 24 - width, (tonumber(SKIN:GetVariable('WORKAREAY')) or 0) + 60)
+		end
+	end
+	if SKIN:GetVariable('LastMode') ~= mode then
+		SKIN:Bang('!WriteKeyValue', 'Variables', 'LastMode', mode, '#@#prefs.inc')
+	end
+	if mode == 'desktop' then
+		SKIN:Bang('!DeactivateConfig', RAND)
+	else
+		SKIN:Bang('!ActivateConfig', RAND, 'Rand.ini')
+		SKIN:Bang('!Refresh', RAND)
+	end
 end
 
 local function readFile()
@@ -479,7 +519,10 @@ local function render(openCount, doneCount)
 	if doneCount > 0 then SKIN:Bang('!ShowMeter', 'MeterClean') else SKIN:Bang('!HideMeter', 'MeterClean') end
 	y = y + rowH + 10
 
-	SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0,0,' .. width .. ',' .. y .. ',12 | Fill Color #ColorBg# | StrokeWidth 0')
+	-- Seitenleiste: Hintergrund ueber die ganze Bildschirmhoehe (oben und unten je 8 Pixel Abstand)
+	local bgH = y
+	if mode == 'sidebar' then bgH = math.max(y, workH - 16) end
+	SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0,0,' .. width .. ',' .. bgH .. ',12 | Fill Color #ColorBg# | StrokeWidth 0')
 	setCount(openCount)
 	SKIN:Bang('!UpdateMeter', '*')
 	SKIN:Bang('!Redraw')
@@ -636,6 +679,7 @@ local function checkReminders()
 end
 
 function Update()
+	if hideOnFirstUpdate then hideOnFirstUpdate = false; SKIN:Bang('!Hide') end
 	-- Aufwachen aus dem Standby: waehrend des Schlafs laeuft kein Update -> grosse Zeitluecke
 	local now = os.time()
 	if now - lastTick > 90 then Reveal() end
@@ -761,7 +805,7 @@ function OpenDialog(i, top)
 	out:write(table.concat(f, '\n'))
 	out:close()
 	-- Formular erscheint dort, wo sonst die Hilfe steht; ist es schon offen, liest es die neuen Werte ein
-	SKIN:Bang('!DeactivateConfig', 'ObsidianTodo\\Hilfe')
+	SKIN:Bang('!DeactivateConfig', 'ObsidianTodo\\Einstellungen')
 	SKIN:Bang('!ActivateConfig', 'ObsidianTodo\\Formular', 'Formular.ini')
 	SKIN:Bang('!Refresh', 'ObsidianTodo\\Formular')
 	SKIN:Bang('!ZPos', top == 1 and '1' or '-2', 'ObsidianTodo\\Formular')
@@ -988,13 +1032,22 @@ function Reveal()
 	if lastOpen == 0 then return end
 	pendingReveal = nil
 	revealUntil = os.time() + math.min(120, 10 * lastOpen)
-	SKIN:Bang('!ZPos', '2')
+	if mode == 'sidebar' then
+		SKIN:Bang('!CommandMeasure', 'MeasureSide', 'Reveal()', RAND)
+	else
+		SKIN:Bang('!ZPos', '2')
+	end
 	render(lastOpen, lastDone)
 end
 
-function HideReveal()
+-- button = true: Knopf "Ausblenden" (sofort weg); sonst Zeit abgelaufen (Seitenleiste bleibt, solange die Maus drin ist)
+function HideReveal(button)
 	if not revealUntil then return end
 	revealUntil = nil
-	SKIN:Bang('!ZPos', '-2')
+	if mode == 'sidebar' then
+		SKIN:Bang('!CommandMeasure', 'MeasureSide', button and 'Out()' or 'RevealEnd()', RAND)
+	else
+		SKIN:Bang('!ZPos', '-2')
+	end
 	render(lastOpen, lastDone)
 end

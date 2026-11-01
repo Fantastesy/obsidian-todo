@@ -126,8 +126,12 @@ function Test-SkinWindow {
     $exe = Join-Path $App "$SkinName\@Resources\TodoHotkey.exe"
     if (-not (Test-Path -LiteralPath $exe)) { return $true }
     try {
-        $p = Start-Process -FilePath $exe -ArgumentList '--check', "`"\$SkinName\Todo.ini`"" -Wait -PassThru -WindowStyle Hidden
-        return $p.ExitCode -eq 0
+        # Seitenleiste: die Liste ist anfangs versteckt, dann zaehlt der sichtbare Rand-Streifen
+        foreach ($end in "\$SkinName\Todo.ini", "\$SkinName\Rand\Rand.ini") {
+            $p = Start-Process -FilePath $exe -ArgumentList '--check', "`"$end`"" -Wait -PassThru -WindowStyle Hidden
+            if ($p.ExitCode -eq 0) { return $true }
+        }
+        return $false
     } catch { return $true }
 }
 

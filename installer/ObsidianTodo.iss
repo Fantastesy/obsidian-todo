@@ -37,6 +37,10 @@ Source: "helper.ps1"; Flags: dontcopy
 Source: "helper.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SkinDir}\*"; DestDir: "{app}\ObsidianTodo"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[InstallDelete]
+; altes Hilfe-Fenster (seit 1.2.0: Einstellungen)
+Type: filesandordirs; Name: "{app}\ObsidianTodo\Hilfe"
+
 [Icons]
 Name: "{userprograms}\Obsidian To-do entfernen"; Filename: "{uninstallexe}"; IconFilename: "{sys}\shell32.dll"; IconIndex: 31
 

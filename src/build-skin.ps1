@@ -1,4 +1,4 @@
-﻿# Erzeugt die Rainmeter-Dateien Todo.ini, Formular\Formular.ini und Hilfe\Hilfe.ini (UTF-16 LE).
+﻿# Erzeugt die Rainmeter-Dateien Todo.ini, Formular\Formular.ini, Einstellungen\Einstellungen.ini und Rand\Rand.ini (UTF-16 LE).
 # Aufruf: powershell -File build-skin.ps1 -Out <Skin-Ordner> [-Version 1.0.0]
 # Benutzerabhaengige Werte (Pfad zur Todo.md, Vault-Name) stehen in @Resources\settings.inc,
 # die der Installer schreibt - hier nur Platzhalter.
@@ -10,7 +10,7 @@ $boxDone = [char]0xE73D  # CheckboxCompositeReversed (ausgefuellt mit Haken)
 $clip = [char]0xE723     # Attach (Bueroklammer)
 $cal = [char]0xE787      # Calendar
 $rep = [char]0xE8EE      # RepeatAll (wiederkehrend)
-$help = [char]0xE897     # Help (Fragezeichen)
+$gear = [char]0xE713     # Setting (Zahnrad)
 $close = [char]0xE711    # Cancel (X)
 $foldUp = [char]0xE70E   # ChevronUp (Liste offen -> einklappen)
 $foldDown = [char]0xE70D # ChevronDown (Liste zu -> ausklappen)
@@ -27,6 +27,9 @@ DynamicWindowSize=1
 OnRefreshAction=["#@#TodoHotkey.exe" "#PROGRAMPATH#Rainmeter.exe"]
 ContextTitle=Todo.md in Obsidian öffnen
 ContextAction=$obs
+; Seitenleiste: Maus in der Liste haelt sie offen, Verlassen laesst sie hinausfahren (sidebar.lua)
+MouseOverAction=[!CommandMeasure MeasureSide "Enter()" "ObsidianTodo\Rand"]
+MouseLeaveAction=[!CommandMeasure MeasureSide "Leave()" "ObsidianTodo\Rand"]
 
 [Metadata]
 Name=Obsidian Todo
@@ -47,7 +50,10 @@ MaxItems=15
 MaxNotes=30
 MaxSubs=30
 Width=460
-; eigene Einstellungen (Breite), schreibt das Hilfe-Fenster; bleiben bei Updates erhalten
+; Anzeige: sidebar (Seitenleiste am rechten Rand) | desktop | both
+Mode=sidebar
+LastMode=
+; eigene Einstellungen (Anzeige, Breite), schreibt das Einstellungen-Fenster; bleiben bei Updates erhalten
 @IncludePrefs=#@#prefs.inc
 RowH=36
 NoteH=30
@@ -182,7 +188,7 @@ ToolTipText=In Obsidian öffnen
 Meter=String
 DynamicVariables=1
 ; beim Einblenden steht hier "Ausblenden" (todo.lua)
-LeftMouseUpAction=[!CommandMeasure MeasureTodo "HideReveal()"]
+LeftMouseUpAction=[!CommandMeasure MeasureTodo "HideReveal(true)"]
 X=(#Width#-62)
 Y=22
 StringAlign=Right
@@ -193,7 +199,7 @@ FontColor=#ColorDone#
 AntiAlias=1
 Text=
 
-; Fragezeichen neben dem Titel: Hilfe-Fenster ein-/ausblenden
+; Zahnrad neben dem Titel: Einstellungen ein-/ausblenden
 [MeterHelp]
 Meter=String
 X=78
@@ -206,9 +212,9 @@ FontSize=(#FontSize#-2)
 FontColor=#ColorDone#
 SolidColor=0,0,0,1
 AntiAlias=1
-Text=$help
-ToolTipText=Hilfe: was die Liste alles kann
-LeftMouseUpAction=[!ToggleConfig "ObsidianTodo\Hilfe" "Hilfe.ini"]
+Text=$gear
+ToolTipText=Einstellungen und Hilfe
+LeftMouseUpAction=[!ToggleConfig "ObsidianTodo\Einstellungen" "Einstellungen.ini"]
 MouseOverAction=[!SetOption MeterHelp SolidColor "#ColorHover#"][!UpdateMeter MeterHelp][!Redraw]
 MouseLeaveAction=[!SetOption MeterHelp SolidColor "0,0,0,1"][!UpdateMeter MeterHelp][!Redraw]
 
@@ -995,43 +1001,73 @@ $form = $form.Replace("[BtnSave]`nMeter=String", "[BtnSave]`nMeter=String`nFontW
 New-Item -ItemType Directory -Force "$skin\Formular" | Out-Null
 [IO.File]::WriteAllText("$skin\Formular\Formular.ini", $form, [Text.Encoding]::Unicode)
 
-# ---------- Hilfe-Fenster: eigene Config ObsidianTodo\Hilfe, geoeffnet ueber den ?-Knopf ----------
-# "#..." = Ueberschrift, sonst "Stichwort: Erklaerung" (Stichwort fett)
+# ---------- Einstellungen-Fenster: Config ObsidianTodo\Einstellungen, geoeffnet ueber das Zahnrad ----------
+# Anzeige (Seitenleiste/Desktop/beides) und Breite schreiben in prefs.inc (bleibt bei Updates erhalten).
+# Darunter die Kurzhilfe: "#..." = Ueberschrift, sonst "Stichwort: Erklaerung" (Stichwort fett)
 $helpLines = @(
-    '#Bedienung'
+    '#So funktioniert''s'
     'Klick: Punkt abhaken (nochmal klicken = rückgängig)'
     'Rechtsklick: Punkt bearbeiten oder löschen'
     '+ Neuer Punkt: neuen Punkt anlegen, überall auch mit Strg+Alt+T'
     'Enter: speichert den Punkt sofort (Datum vorher wählen oder später ergänzen)'
     'Titel „Todo“: Liste in Obsidian öffnen'
-    'Pfeil oben rechts: Liste ein- und ausklappen'
-    '#Im Formular (alles freiwillig)'
-    'Datum und Uhrzeit: zur Uhrzeit kommt eine Erinnerung'
-    'Wiederholen: z. B. täglich, wöchentlich oder jährlich'
-    'Notizen: Text, Links, Dateien oder Unteraufgaben anhängen'
-    '#Farben'
-    'Orange: heute fällig'
-    'Rot: überfällig'
-    '#Einblenden'
-    'Anmelden, Aufwachen, Entsperren: die Liste kommt kurz nach vorne (10 Sekunden pro offenem Punkt)'
-    'Ausblenden ✕ (oben rechts): sofort zurück auf den Desktop'
-    '#Archiv'
+    'Seitenleiste: Maus an den rechten Bildschirmrand – die Liste fährt herein'
+    'Anmelden, Aufwachen, Entsperren: die Liste kommt kurz von selbst (10 Sekunden pro offenem Punkt)'
+    'Farben: orange = heute fällig, rot = überfällig'
     'Erledigte archivieren: abgehakte Punkte wandern ins Archiv'
-    '#Breite der Liste'
 )
 $hw = 600
 $archive = '["obsidian://open?path=#ArchiveUrl#"]'
+function SetChip($name, $x, $y, $text, $action) {
+@"
+[$name]
+Meter=String
+X=$x
+Y=$y
+Padding=14,6,14,6
+FontFace=#FontFace#
+FontSize=11
+FontWeight=600
+FontColor=#ColorNote#
+SolidColor=255,255,255,16
+AntiAlias=1
+Text=$text
+LeftMouseUpAction=$action
+
+
+"@
+}
+function Caption($name, $text) {
+@"
+[$name]
+Meter=String
+X=22
+Y=22R
+FontFace=#FontFace#
+FontSize=13
+FontWeight=700
+FontColor=#ColorAccent#
+AntiAlias=1
+Text=$text
+
+
+"@
+}
+$sel = '[!SetOption {0} SolidColor "138,108,245,255"][!SetOption {0} FontColor "#ColorText#"]'
 $hini = @"
-; Hilfe-Fenster der Obsidian-Todo-Liste. Erzeugt von ..\@Resources\build-skin.ps1 - Aenderungen dort machen.
+; Einstellungen der Obsidian-Todo-Liste. Erzeugt von build-skin.ps1 - Aenderungen dort machen.
 [Rainmeter]
 Update=1000
 AccurateText=1
 DynamicWindowSize=1
+; immer im Vordergrund und mittig auf dem Hauptbildschirm (auch wenn die Liste in der Seitenleiste steckt)
+OnRefreshAction=[!ZPos 2][!SetWindowPosition "50%" "50%" "50%" "50%"]
 
 [Variables]
 ArchiveUrl=
 @IncludeSettings=#@#settings.inc
 Width=460
+Mode=sidebar
 @IncludePrefs=#@#prefs.inc
 FontFace=Segoe UI
 IconFace=Segoe Fluent Icons
@@ -1041,6 +1077,27 @@ ColorNote=200,200,212,255
 ColorDone=175,175,188,240
 ColorAccent=165,185,255,255
 ColorHover=255,255,255,22
+
+; ausgewaehlte Knoepfe lila
+[MeasureMode]
+Measure=String
+String=#Mode#
+IfMatch=^sidebar$
+IfMatchAction=$($sel -f 'Mode1')
+IfMatch2=^desktop$
+IfMatchAction2=$($sel -f 'Mode2')
+IfMatch3=^both$
+IfMatchAction3=$($sel -f 'Mode3')
+
+[MeasureWidth]
+Measure=Calc
+Formula=#Width#
+IfCondition=MeasureWidth < 420
+IfTrueAction=$($sel -f 'Width1')
+IfCondition2=(MeasureWidth >= 420) && (MeasureWidth < 520)
+IfTrueAction2=$($sel -f 'Width2')
+IfCondition3=MeasureWidth >= 520
+IfTrueAction3=$($sel -f 'Width3')
 
 [MeterBg]
 Meter=Shape
@@ -1056,7 +1113,7 @@ FontSize=17
 FontWeight=700
 FontColor=#ColorText#
 AntiAlias=1
-Text=Was die Todo-Liste kann
+Text=Einstellungen
 
 [MeterClose]
 Meter=String
@@ -1077,33 +1134,43 @@ MouseLeaveAction=[!SetOption MeterClose SolidColor "0,0,0,1"][!UpdateMeter Meter
 
 
 "@
-$n = 0
-foreach ($l in $helpLines) {
-    $n++
-    $y = if ($n -eq 1) { '62' } elseif ($l.StartsWith('#')) { '14R' } else { '4R' }
-    if ($l.StartsWith('#')) {
-        $hini += @"
-[Line$n]
+$hini += (Caption 'CapMode' 'Anzeige').Replace('Y=22R', 'Y=62')
+$modes = @(@('Mode1', 'Seitenleiste', 'sidebar'), @('Mode2', 'Desktop', 'desktop'), @('Mode3', 'Beides', 'both'))
+$x = '22'; $y = '10R'
+foreach ($m in $modes) {
+    $hini += SetChip $m[0] $x $y $m[1] "[!WriteKeyValue Variables Mode $($m[2]) `"#@#prefs.inc`"][!Refresh ObsidianTodo][!Refresh]"
+    $x = '8R'; $y = 'r'
+}
+$hini += @"
+[ModeInfo]
 Meter=String
 X=22
-Y=$y
+Y=8R
 W=($hw-44)
 ClipString=2
 FontFace=#FontFace#
-FontSize=13
-FontWeight=700
-FontColor=#ColorAccent#
+FontSize=10
+FontColor=#ColorDone#
 AntiAlias=1
-Text=$($l.Substring(1))
+Text=Seitenleiste: unsichtbar, fährt am rechten Bildschirmrand herein. Desktop: liegt auf dem Hintergrund. Beides: liegt auf dem Desktop und kommt am Rand nach vorne.
 
 
 "@
-    } else {
-        $hini += @"
+$hini += Caption 'CapWidth' 'Breite'
+$x = '22'; $y = '10R'
+foreach ($w in @(@('Width1', 'Schmal', 380), @('Width2', 'Normal', 460), @('Width3', 'Breit', 560))) {
+    $hini += SetChip $w[0] $x $y $w[1] "[!WriteKeyValue Variables Width $($w[2]) `"#@#prefs.inc`"][!Refresh ObsidianTodo][!Refresh ObsidianTodo\Rand][!Refresh]"
+    $x = '8R'; $y = 'r'
+}
+$n = 0
+foreach ($l in $helpLines) {
+    $n++
+    if ($l.StartsWith('#')) { $hini += Caption "Line$n" $l.Substring(1); continue }
+    $hini += @"
 [Line$n]
 Meter=String
 X=22
-Y=$y
+Y=4R
 W=($hw-44)
 ClipString=2
 FontFace=#FontFace#
@@ -1118,45 +1185,9 @@ Text=$l
 
 
 "@
-    }
 }
 $hini += @"
-; Breite: schreibt Width in prefs.inc (bleibt bei Updates erhalten) und laedt die Liste neu
-[MeasureWidth]
-Measure=Calc
-Formula=#Width#
-IfCondition=MeasureWidth < 420
-IfTrueAction=[!SetOption Width1 SolidColor "138,108,245,255"][!SetOption Width1 FontColor "#ColorText#"]
-IfCondition2=(MeasureWidth >= 420) && (MeasureWidth < 520)
-IfTrueAction2=[!SetOption Width2 SolidColor "138,108,245,255"][!SetOption Width2 FontColor "#ColorText#"]
-IfCondition3=MeasureWidth >= 520
-IfTrueAction3=[!SetOption Width3 SolidColor "138,108,245,255"][!SetOption Width3 FontColor "#ColorText#"]
-
-
-"@
-$wx = '22'
-foreach ($w in @(@('Width1', 'Schmal', 380), @('Width2', 'Normal', 460), @('Width3', 'Breit', 560))) {
-    $hini += @"
-[$($w[0])]
-Meter=String
-X=$wx
-Y=$(if ($wx -eq '22') { '8R' } else { 'r' })
-Padding=14,6,14,6
-FontFace=#FontFace#
-FontSize=11
-FontWeight=600
-FontColor=#ColorNote#
-SolidColor=255,255,255,16
-AntiAlias=1
-Text=$($w[1])
-LeftMouseUpAction=[!WriteKeyValue Variables Width $($w[2]) "#@#prefs.inc"][!Refresh ObsidianTodo][!Refresh]
-
-
-"@
-    $wx = '8R'
-}
-$hini += @"
-[MeterEnd]
+[MeterArchive]
 Meter=String
 X=22
 Y=18R
@@ -1168,6 +1199,46 @@ SolidColor=0,0,0,1
 AntiAlias=1
 Text=Archiv öffnen ↗
 LeftMouseUpAction=$archive
+
+[MeterEnd]
+Meter=String
+X=($hw-22)
+Y=r
+StringAlign=Right
+FontFace=#FontFace#
+FontSize=10
+FontColor=#ColorDone#
+AntiAlias=1
+Text=Version $Version
 "@
-New-Item -ItemType Directory -Force "$skin\Hilfe" | Out-Null
-[IO.File]::WriteAllText("$skin\Hilfe\Hilfe.ini", $hini, [Text.Encoding]::Unicode)
+New-Item -ItemType Directory -Force "$skin\Einstellungen" | Out-Null
+[IO.File]::WriteAllText("$skin\Einstellungen\Einstellungen.ini", $hini, [Text.Encoding]::Unicode)
+
+# ---------- Rand-Streifen fuer die Seitenleiste: Config ObsidianTodo\Rand (Logik in sidebar.lua) ----------
+$rand = @"
+; Unsichtbarer Streifen am rechten Bildschirmrand: Maus dagegen -> Liste faehrt herein. Erzeugt von build-skin.ps1.
+[Rainmeter]
+; schnelle Aktualisierung nur fuer die Animation; ohne Animation tut sidebar.lua nichts
+Update=16
+AccurateText=1
+OnRefreshAction=[!ZPos 2][!Draggable 0][!KeepOnScreen 0][!ClickThrough 0][!SnapEdges 0]
+
+[Variables]
+Width=460
+Mode=sidebar
+@IncludePrefs=#@#prefs.inc
+
+[MeasureSide]
+Measure=Script
+ScriptFile=#@#sidebar.lua
+
+; 1 Pixel breit; Deckkraft 1 von 255 reicht, damit Rainmeter die Maus bemerkt
+[MeterEdge]
+Meter=Image
+W=1
+H=1080
+SolidColor=0,0,0,1
+MouseOverAction=[!CommandMeasure MeasureSide "EdgeHit()"]
+"@
+New-Item -ItemType Directory -Force "$skin\Rand" | Out-Null
+[IO.File]::WriteAllText("$skin\Rand\Rand.ini", $rand, [Text.Encoding]::Unicode)
