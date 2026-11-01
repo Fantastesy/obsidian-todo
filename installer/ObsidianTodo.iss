@@ -57,6 +57,9 @@ var
   PrereqLabel: TNewStaticText;
   ObsidianCheck: TNewCheckBox;
   VaultPage: TInputOptionWizardPage;
+  KeepPage: TWizardPage;
+  KeepLabel: TNewStaticText;
+  ChangeCheck: TNewCheckBox;
   NewVaultPage, TodoPage: TInputDirWizardPage;
   LastVaultForTodo: String;
   SilentVault: String;
@@ -169,6 +172,19 @@ begin
   end;
 end;
 
+{ bisherige Einrichtung: fruehere Setup-Auswahl oder alte Handversion }
+function KnownTodoDir: String;
+begin
+  Result := '';
+  if (PrevVault <> '') and (PrevTodoDir <> '') and DirExists(PrevTodoDir) then Result := PrevTodoDir
+  else if OldTodoDir <> '' then Result := OldTodoDir;
+end;
+
+function KeepSetup: Boolean;
+begin
+  Result := (KnownTodoDir <> '') and not ChangeCheck.Checked;
+end;
+
 procedure InitializeWizard;
 var
   I: Integer;
@@ -195,8 +211,23 @@ begin
   ObsidianCheck.Caption := 'Obsidian auch installieren (offizielle Version von obsidian.md)';
   ObsidianCheck.Checked := True;
 
+  { Seite: bisherige Einrichtung uebernehmen }
+  KeepPage := CreateCustomPage(PrereqPage.ID, 'Bisherige Einrichtung gefunden', 'Deine Todo-Liste wird weiterverwendet');
+  KeepLabel := TNewStaticText.Create(KeepPage);
+  KeepLabel.Parent := KeepPage.Surface;
+  KeepLabel.Width := KeepPage.SurfaceWidth;
+  KeepLabel.AutoSize := False;
+  KeepLabel.WordWrap := True;
+  KeepLabel.Height := ScaleY(70);
+  ChangeCheck := TNewCheckBox.Create(KeepPage);
+  ChangeCheck.Parent := KeepPage.Surface;
+  ChangeCheck.Top := KeepLabel.Top + KeepLabel.Height + ScaleY(8);
+  ChangeCheck.Width := KeepPage.SurfaceWidth;
+  ChangeCheck.Caption := 'Andere Todo-Liste wählen';
+  ChangeCheck.Checked := False;
+
   { Seite: Vault waehlen }
-  VaultPage := CreateInputOptionPage(PrereqPage.ID, 'Obsidian-Vault',
+  VaultPage := CreateInputOptionPage(KeepPage.ID, 'Obsidian-Vault',
     'In welchem Vault soll die Todo-Liste gespeichert werden?',
     'Diese Vaults wurden auf deinem PC gefunden:', True, False);
   for I := 0 to VaultList.Count - 1 do
@@ -229,6 +260,9 @@ procedure CurPageChanged(CurPageID: Integer);
 var
   S: String;
 begin
+  if CurPageID = KeepPage.ID then
+    KeepLabel.Caption := 'Deine Liste in' + #13#10 + AddBackslash(KnownTodoDir) + 'Todo.md' + #13#10 +
+      'wird weiterverwendet, mit allen Punkten, Notizen und dem Archiv.';
   if CurPageID = PrereqPage.ID then
   begin
     S := '';
@@ -259,8 +293,10 @@ function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   Result := False;
   if (PageID = PrereqPage.ID) then Result := not NeedRainmeter and not NeedObsidian
-  else if (PageID = VaultPage.ID) then Result := VaultList.Count = 0
-  else if (PageID = NewVaultPage.ID) then Result := not NewVaultChosen;
+  else if (PageID = KeepPage.ID) then Result := KnownTodoDir = ''
+  else if (PageID = VaultPage.ID) then Result := KeepSetup or (VaultList.Count = 0)
+  else if (PageID = NewVaultPage.ID) then Result := KeepSetup or not NewVaultChosen
+  else if (PageID = TodoPage.ID) then Result := KeepSetup;
 end;
 
 { Adresse/Pruefsumme der neuesten offiziellen Version holen und zur Download-Seite hinzufuegen }
@@ -353,11 +389,35 @@ begin
   end;
 end;
 
+{ Vault zur bisherigen Liste: fruehere Setup-Auswahl, sonst der bekannte Vault, in dem sie liegt }
+function VaultFor(const Dir: String): String;
+var
+  I: Integer;
+begin
+  Result := PrevVault;
+  if Result <> '' then Exit;
+  for I := 0 to VaultList.Count - 1 do
+    if Pos(Lowercase(AddBackslash(VaultList[I])), Lowercase(AddBackslash(Dir))) = 1 then
+    begin
+      Result := VaultList[I];
+      Exit;
+    end;
+  Result := Dir;
+end;
+
+procedure ApplyKeep;
+begin
+  if not KeepSetup then begin SilentVault := ''; Exit; end;
+  SilentVault := VaultFor(KnownTodoDir);
+  TodoPage.Values[0] := KnownTodoDir;
+end;
+
 function NextButtonClick(CurPageID: Integer): Boolean;
 var
   V: String;
 begin
   Result := True;
+  if CurPageID = KeepPage.ID then ApplyKeep;
   if CurPageID = TodoPage.ID then
   begin
     V := AddBackslash(ChosenVault);
