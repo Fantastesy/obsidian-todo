@@ -44,7 +44,62 @@ PlasmoidItem {
     toolTipSubText: model ? model.openCount + " offen" : ""
     switchWidth: Kirigami.Units.gridUnit * 14
     switchHeight: Kirigami.Units.gridUnit * 10
-    preferredRepresentation: Plasmoid.formFactor === PlasmaCore.Types.Planar ? fullRepresentation : compactRepresentation
+    // Desktop und senkrechte Seitenleiste: ganze Liste; waagerechte Leiste: Symbol mit Zahl
+    preferredRepresentation: Plasmoid.formFactor === PlasmaCore.Types.Horizontal ? compactRepresentation : fullRepresentation
+    readonly property bool inPanel: Plasmoid.formFactor === PlasmaCore.Types.Vertical
+
+    // ---------- Einblenden beim Anmelden / Aufwachen / Entsperren ----------
+    // In der Seitenleiste (automatisch ausblenden) faehrt KDE die Leiste heraus, solange das Widget
+    // "Aufmerksamkeit" meldet: 10 Sekunden pro offenem Punkt, hoechstens 2 Minuten.
+    property bool revealed: false
+    property bool startupRevealDone: false
+    function reveal() {
+        if (!model || model.openCount === 0) return;
+        revealTimer.interval = Math.min(120, 10 * model.openCount) * 1000;
+        revealed = true;
+        Plasmoid.status = PlasmaCore.Types.RequiresAttentionStatus;
+        revealTimer.restart();
+    }
+    function hideReveal() {
+        revealTimer.stop();
+        revealed = false;
+        Plasmoid.status = PlasmaCore.Types.ActiveStatus;
+    }
+    Timer { id: revealTimer; onTriggered: root.hideReveal() }
+
+    // Aufwachen: waehrend Standby laufen keine Timer -> grosse Luecke zwischen zwei Durchlaeufen
+    property double lastTick: Date.now()
+    property string lastLocked: ""
+    Timer {
+        interval: 5000; running: true; repeat: true
+        onTriggered: {
+            var now = Date.now();
+            if (now - root.lastTick > 60000) root.reveal();
+            root.lastTick = now;
+            // Entsperren: LockedHint der Sitzung wechselt von yes auf no
+            root.run('loginctl show-session "${XDG_SESSION_ID:-self}" -p LockedHint --value 2>/dev/null', function (code, out) {
+                var locked = out.trim();
+                if (root.lastLocked === "yes" && locked === "no") root.reveal();
+                if (locked) root.lastLocked = locked;
+            });
+        }
+    }
+
+    // ---------- Rechtsklick-Menue ----------
+    function runSetup(args) {
+        // abgekoppelt starten: beim Umschalten wird dieses Widget selbst entfernt
+        run('s="${XDG_DATA_HOME:-$HOME/.local/share}/obsidian-todo/setup.sh"; [ -f "$s" ] && setsid bash "$s" ' + args + ' >/dev/null 2>&1 < /dev/null &');
+    }
+    Plasmoid.contextualActions: [
+        PlasmaCore.Action { text: "Neuer Punkt"; icon.name: "list-add"; onTriggered: root.openForm(null) },
+        PlasmaCore.Action { text: "In Obsidian öffnen"; icon.name: "document-open"; onTriggered: root.openInObsidian() },
+        PlasmaCore.Action { isSeparator: true },
+        PlasmaCore.Action { text: "Anzeige: Seitenleiste rechts"; icon.name: "view-split-left-right"; onTriggered: root.runSetup("--mode panel") },
+        PlasmaCore.Action { text: "Anzeige: auf dem Desktop"; icon.name: "user-desktop"; onTriggered: root.runSetup("--mode desktop") },
+        PlasmaCore.Action { text: "Anzeige: beides"; icon.name: "view-list-details"; onTriggered: root.runSetup("--mode both") },
+        PlasmaCore.Action { isSeparator: true },
+        PlasmaCore.Action { text: "Obsidian To-do entfernen …"; icon.name: "edit-delete"; onTriggered: root.runSetup("--uninstall") }
+    ]
 
     compactRepresentation: MouseArea {
         onClicked: root.expanded = !root.expanded
@@ -150,6 +205,8 @@ PlasmoidItem {
         lastContent = c;
         model = Core.parse(c);
         rebuildRows();
+        // nach der Anmeldung einmal einblenden
+        if (!startupRevealDone) { startupRevealDone = true; reveal(); }
     }
 
     function dueInfo(text, done) {

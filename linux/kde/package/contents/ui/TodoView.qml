@@ -19,6 +19,8 @@ Rectangle {
     implicitWidth: Kirigami.Units.gridUnit * 24
     implicitHeight: col.implicitHeight + Kirigami.Units.largeSpacing * 2
     Layout.preferredWidth: implicitWidth
+    // in der Seitenleiste so breit wie die Leiste
+    Layout.fillWidth: app && app.inPanel
     Layout.minimumWidth: Kirigami.Units.gridUnit * 16
     Layout.preferredHeight: implicitHeight
     Layout.minimumHeight: implicitHeight
@@ -52,6 +54,12 @@ Rectangle {
                 TapHandler { onTapped: view.showHelp = !view.showHelp }
             }
             Item { Layout.fillWidth: true }
+            // nach dem Einblenden (Anmelden/Aufwachen): sofort wieder ausblenden
+            Chip {
+                visible: view.app.revealed
+                text: "Ausblenden"
+                onClicked: view.app.hideReveal()
+            }
             PC3.Label {
                 text: view.app.configMissing ? "nicht eingerichtet"
                     : view.app.fileMissing ? "Datei fehlt"
@@ -78,6 +86,9 @@ Rectangle {
                     ["Klick auf das Kästchen", "abhaken (nochmal = rückgängig)"],
                     ["Rechtsklick auf einen Punkt", "bearbeiten oder löschen"],
                     ["+ Neuer Punkt", "auch überall mit Meta+Shift+T"],
+                    ["Seitenleiste", "Maus an den rechten Bildschirmrand"],
+                    ["Rechtsklick auf das Widget", "Anzeige wählen (Seitenleiste/Desktop) oder entfernen"],
+                    ["Verschieben auf dem Desktop", "Rechtsklick auf den Desktop → Bearbeitungsmodus"],
                     ["Enter im Formular", "speichert sofort"],
                     ["Büroklammer", "Notizen, Links, Dateien und Unteraufgaben"],
                     ["Orange / Rot", "heute fällig / überfällig"],

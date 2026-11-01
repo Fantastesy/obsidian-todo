@@ -5,7 +5,8 @@
 #
 # Optionen:
 #   --silent      Update ohne Rueckfragen (nutzt die gespeicherte Einrichtung)
-#   --uninstall   Widget entfernen (Todo.md und Archiv bleiben erhalten)
+#   --uninstall   Widget entfernen (Todo.md und Archiv bleiben erhalten), --yes ohne Rueckfrage
+#   --mode panel|desktop|both   Anzeige umschalten: Seitenleiste rechts, Desktop oder beides
 #
 # Das fertige Setup enthaelt das Widget als Anhang (siehe linux/build-kde.sh).
 set -u
@@ -19,12 +20,18 @@ DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/obsidian-todo"
 LOG="${TMPDIR:-/tmp}/obsidian-todo-setup.log"
 SILENT=0
 UNINSTALL=0
-for a in "$@"; do
-    case "$a" in
+YES=0
+SET_MODE=""
+while [ $# -gt 0 ]; do
+    case "$1" in
         --silent) SILENT=1 ;;
         --uninstall) UNINSTALL=1 ;;
+        --yes) YES=1 ;;
+        --mode) SET_MODE="${2:-}"; shift ;;
     esac
+    shift
 done
+MENU_ENTRY="${XDG_DATA_HOME:-$HOME/.local/share}/applications/obsidian-todo-uninstall.desktop"
 
 log() { printf '%s %s\n' "$(date +%FT%T)" "$*" >> "$LOG"; }
 
@@ -95,13 +102,85 @@ else
 fi
 [ -f "$PKG/metadata.json" ] || fail "Widget-Dateien nicht gefunden."
 
+# ---------- Anzeige einrichten: Seitenleiste rechts, Desktop oder beides ----------
+# Seitenleiste = KDE-Leiste am rechten Rand mit "automatisch ausblenden": erscheint, wenn die Maus an den
+# Rand faehrt, bleibt offen, solange die Maus drin ist, und faehrt beim Einblenden des Widgets heraus.
+apply_mode() {
+    local wantPanel=false wantDesk=false
+    case "$1" in
+        panel) wantPanel=true ;;
+        desktop) wantDesk=true ;;
+        both) wantPanel=true; wantDesk=true ;;
+        *) return 1 ;;
+    esac
+    plasma_script "
+var id = '$PLUGIN_ID', wantPanel = $wantPanel, wantDesk = $wantDesk, inPanel = false, onDesk = false;
+panels().forEach(function (p) {
+    var ours = p.widgets(id);
+    if (!ours.length) return;
+    if (wantPanel) { inPanel = true; return; }
+    var others = p.widgets().length - ours.length;
+    ours.forEach(function (w) { w.remove(); });
+    if (others === 0) p.remove();
+});
+desktops().forEach(function (d) {
+    d.widgets(id).forEach(function (w) { if (wantDesk) onDesk = true; else w.remove(); });
+});
+if (wantPanel && !inPanel) {
+    var p = new Panel;
+    p.location = 'right';
+    p.height = Math.round(gridUnit * 24);
+    try { p.hiding = 'autohide'; } catch (e) {}
+    try { p.floating = true; } catch (e) {}
+    try { p.lengthMode = 'fit'; } catch (e) {}
+    try { p.alignment = 'center'; } catch (e) {}
+    var pw = p.addWidget(id);
+    pw.globalShortcut = '$SHORTCUT';
+}
+if (wantDesk && !onDesk) {
+    var d = desktops()[0];
+    for (var i = 0; i < desktops().length; i++) if (desktops()[i].screen === 0) d = desktops()[i];
+    var w = d.addWidget(id);
+    if (!wantPanel) w.globalShortcut = '$SHORTCUT';
+    var g = screenGeometry(d.screen);
+    w.geometry = new QRectF(g.width - 520, 60, 480, 560);
+}"
+}
+set_conf() {   # $1 Schluessel, $2 Wert
+    [ -f "$CONF" ] || return
+    if grep -q "^$1=" "$CONF"; then sed -i "s|^$1=.*|$1=$2|" "$CONF"; else printf '%s=%s\n' "$1" "$2" >> "$CONF"; fi
+}
+
 # ---------- Deinstallieren ----------
 if [ "$UNINSTALL" = 1 ]; then
-    plasma_script "desktops().concat(panels()).forEach(function(c){ c.widgets('$PLUGIN_ID').forEach(function(w){ w.remove(); }); });"
+    if [ "$YES" = 0 ] && [ "$SILENT" = 0 ]; then
+        ask_yesno "$APP wirklich entfernen?
+
+Deine Todo.md und das Archiv bleiben erhalten." || exit 0
+    fi
+    plasma_script "
+var id = '$PLUGIN_ID';
+panels().forEach(function (p) {
+    var ours = p.widgets(id);
+    if (!ours.length) return;
+    var others = p.widgets().length - ours.length;
+    ours.forEach(function (w) { w.remove(); });
+    if (others === 0) p.remove();
+});
+desktops().forEach(function (d) { d.widgets(id).forEach(function (w) { w.remove(); }); });"
     kpackagetool6 -t Plasma/Applet -r "$PLUGIN_ID" >/dev/null 2>&1
     rm -rf "$DATA_DIR" "$CONF_DIR"
-    rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/autostart/obsidian-todo-update.desktop"
+    rm -f "$MENU_ENTRY" "${XDG_CONFIG_HOME:-$HOME/.config}/autostart/obsidian-todo-update.desktop"
     info "$APP wurde entfernt. Deine Todo.md und das Archiv sind noch da."
+    exit 0
+fi
+
+# ---------- Nur Anzeige umschalten (Rechtsklick-Menue des Widgets) ----------
+if [ -n "$SET_MODE" ]; then
+    [ -f "$CONF" ] || fail "$APP ist noch nicht eingerichtet."
+    case "$SET_MODE" in panel|desktop|both) ;; *) fail "Unbekannte Anzeige: $SET_MODE (panel, desktop oder both)." ;; esac
+    apply_mode "$SET_MODE" || fail "KDE Plasma hat die Änderung nicht angenommen. Bitte später noch einmal versuchen."
+    set_conf MODE "$SET_MODE"
     exit 0
 fi
 
@@ -206,10 +285,11 @@ EOF
 }
 
 # ---------- Einrichtung waehlen ----------
-VAULT=""; TODO_DIR=""
+VAULT=""; TODO_DIR=""; MODE=""
 if [ -f "$CONF" ]; then
     VAULT="$(sed -n 's/^VAULT=//p' "$CONF")"
     TODO_DIR="$(dirname "$(sed -n 's/^TODO_FILE=//p' "$CONF")")"
+    MODE="$(sed -n 's/^MODE=//p' "$CONF")"
 fi
 
 if [ "$SILENT" = 0 ]; then
@@ -270,6 +350,24 @@ Damit bekommst du eine Todo-Liste als KDE-Widget, die direkt in deinem Obsidian-
 $VAULT"
     done
     [ "$NEW_VAULT" = 1 ] && register_vault "$VAULT"
+
+    # Anzeige
+    cur="${MODE:-panel}"
+    if [ "$HAVE_KDIALOG" = 1 ]; then
+        on() { [ "$cur" = "$1" ] && echo on || echo off; }
+        MODE="$(kdialog --title "$APP" --radiolist "Wo soll die Liste angezeigt werden?
+
+Seitenleiste: erscheint, wenn die Maus an den rechten Bildschirmrand fährt, und nach dem Anmelden/Aufklappen für 10 Sekunden pro offenem Punkt.
+Desktop: liegt auf dem Hintergrundbild (unter den Fenstern).
+
+Später umschaltbar per Rechtsklick auf die Liste." \
+            panel "Seitenleiste am rechten Rand (empfohlen)" "$(on panel)" \
+            desktop "Auf dem Desktop" "$(on desktop)" \
+            both "Beides" "$(on both)")" || exit 0
+    else
+        read -r -p "Anzeige: [p]Seitenleiste (Standard), [d]Desktop, [b]eides: " r
+        case "$r" in d*) MODE=desktop ;; b*) MODE=both ;; *) MODE=panel ;; esac
+    fi
 else
     [ -n "$VAULT" ] && [ -n "$TODO_DIR" ] || fail "Keine gespeicherte Einrichtung gefunden."
 fi
@@ -288,6 +386,7 @@ VAULT=$VAULT
 VAULT_NAME=$(basename "$VAULT")
 TODO_FILE=$TODO_FILE
 ARCHIVE_FILE=$ARCHIVE_FILE
+MODE=${MODE:-panel}
 EOF
 
 # ---------- Widget installieren ----------
@@ -304,33 +403,46 @@ mkdir -p "$DATA_DIR"
 cp "$UPD" "$DATA_DIR/update.sh"; chmod +x "$DATA_DIR/update.sh"
 printf '%s\n' "$VERSION" > "$DATA_DIR/version.txt"
 printf '%s\n' "$REPO" > "$DATA_DIR/repo.txt"
+# Setup selbst aufheben: fuer "Anzeige umschalten" und "entfernen" (Rechtsklick-Menue, Startmenue)
+[ "$SELF" != "$DATA_DIR/setup.sh" ] && cp "$SELF" "$DATA_DIR/setup.sh"
+chmod +x "$DATA_DIR/setup.sh"
 
-# ---------- Auf den Desktop setzen (nur wenn noch nirgends vorhanden) ----------
+# Startmenue: "Obsidian To-do entfernen"
+mkdir -p "$(dirname "$MENU_ENTRY")"
+cat > "$MENU_ENTRY" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Obsidian To-do entfernen
+Comment=Entfernt die Todo-Liste (Todo.md und Archiv bleiben erhalten)
+Exec=bash "$DATA_DIR/setup.sh" --uninstall
+Icon=edit-delete
+Terminal=false
+Categories=Utility;
+EOF
+command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$(dirname "$MENU_ENTRY")" >/dev/null 2>&1
+
+# ---------- Anzeige einrichten (beim Update bleibt alles, wie es ist) ----------
 if [ "$SILENT" = 0 ]; then
-    plasma_script "
-var id = '$PLUGIN_ID', found = false;
-desktops().concat(panels()).forEach(function (c) { if (c.widgets(id).length) found = true; });
-if (!found) {
-    var d = desktops()[0];
-    for (var i = 0; i < desktops().length; i++) if (desktops()[i].screen === 0) d = desktops()[i];
-    var w = d.addWidget(id);
-    w.globalShortcut = '$SHORTCUT';
-    var g = screenGeometry(d.screen);
-    w.geometry = new QRectF(g.width - 520, 60, 480, 560);
-    w.reloadConfig();
-}" || log "Widget konnte nicht automatisch auf den Desktop gesetzt werden"
+    apply_mode "${MODE:-panel}" || log "Anzeige konnte nicht automatisch eingerichtet werden"
 fi
 
 log "fertig: $TODO_FILE (Version $VERSION)"
 if [ "$SILENT" = 1 ]; then
     command -v notify-send >/dev/null 2>&1 && notify-send -a "$APP" -i checkbox "$APP aktualisiert" "Version $VERSION ist installiert. Sie wird nach dem nächsten Anmelden aktiv."
 else
+    case "${MODE:-panel}" in
+        panel) where="Die Liste erscheint, wenn du mit der Maus an den rechten Bildschirmrand fährst, und nach dem Anmelden/Aufklappen kurz von selbst." ;;
+        desktop) where="Die Liste liegt oben rechts auf deinem Desktop." ;;
+        *) where="Die Liste liegt auf deinem Desktop und erscheint zusätzlich am rechten Bildschirmrand." ;;
+    esac
     info "Fertig!
 
-Die Liste liegt oben rechts auf deinem Desktop und speichert in:
+$where
+Gespeichert wird in:
 $TODO_FILE
 
 Neuer Punkt von überall: $SHORTCUT
-Falls das Widget fehlt: Rechtsklick auf den Desktop → „Miniprogramme hinzufügen“ → „Obsidian Todo“."
+Anzeige umschalten oder entfernen: Rechtsklick auf die Liste.
+Entfernen geht auch über das Startmenü: „Obsidian To-do entfernen“."
 fi
 exit 0
