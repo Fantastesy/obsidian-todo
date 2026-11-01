@@ -109,6 +109,18 @@ try {
                     }
                 }
             }
+            # vorhandene Obsidian-Todo-Liste (alte Handversion oder fruehere Installation): welche Todo.md nutzt sie?
+            if ($rm) {
+                $old = Join-Path $rm.Skins $SkinName
+                foreach ($f in @((Join-Path $old '@Resources\settings.inc'), (Join-Path $old 'Todo.ini'))) {
+                    if (-not (Test-Path -LiteralPath $f)) { continue }
+                    $m = Select-String -LiteralPath $f -Encoding Unicode -Pattern '^\s*TodoFile\s*=\s*(.+\.md)\s*$' | Select-Object -First 1
+                    if ($m) {
+                        $tf = $m.Matches[0].Groups[1].Value.Trim()
+                        if (Test-Path -LiteralPath $tf) { $lines += "OldTodo=$tf"; break }
+                    }
+                }
+            }
             [IO.File]::WriteAllLines($Out, $lines, (New-Object Text.UTF8Encoding($false)))
         }
 
@@ -194,11 +206,32 @@ try {
             if (Test-Path -LiteralPath $link) {
                 $item = Get-Item -LiteralPath $link -Force
                 if ($item.LinkType -ne 'Junction') {
-                    # alter, von Hand eingerichteter Skin: zur Sicherheit umbenennen statt loeschen
-                    $bak = "$link-alt-$(Get-Date -Format yyyyMMdd-HHmmss)"
-                    Rename-Item -LiteralPath $link -NewName (Split-Path $bak -Leaf)
-                    Log "Alter Skin gesichert als $bak"
+                    # alte Handversion: erst anhalten (Tastenkuerzel-Programm, Fenster), dann sichern statt loeschen.
+                    # Die Sicherung kommt in den Programmordner, damit Rainmeter sie nicht als eigenen Skin anzeigt.
+                    if (Get-Process Rainmeter -ErrorAction SilentlyContinue) {
+                        foreach ($c in "$SkinName\Formular", "$SkinName\Hilfe", $SkinName) { & $RainmeterExe '!DeactivateConfig' $c }
+                        Start-Sleep -Seconds 2
+                    }
+                    Get-Process TodoHotkey -ErrorAction SilentlyContinue | Stop-Process -Force
+                    Start-Sleep -Milliseconds 500
+                    $bakDir = Join-Path $App 'Sicherung'
+                    New-Item -ItemType Directory -Force $bakDir | Out-Null
+                    $bak = Join-Path $bakDir "$SkinName-alt-$(Get-Date -Format yyyyMMdd-HHmmss)"
+                    try { Move-Item -LiteralPath $link -Destination $bak -ErrorAction Stop }
+                    catch {
+                        # anderes Laufwerk: kopieren und dann loeschen
+                        Copy-Item -LiteralPath $link -Destination $bak -Recurse -ErrorAction Stop
+                        Remove-Item -LiteralPath $link -Recurse -Force -ErrorAction Stop
+                    }
+                    Log "Alte Version gesichert: $bak"
                 } else { cmd /c rmdir "`"$link`"" | Out-Null }
+            }
+            # verwaiste Verknuepfungen aus frueheren Installationen in anderen Skins-Ordnern entfernen
+            foreach ($other in @((Join-Path ([Environment]::GetFolderPath('MyDocuments')) "Rainmeter\Skins\$SkinName"))) {
+                if ($other -ne $link) {
+                    $it = Get-Item -LiteralPath $other -Force -ErrorAction SilentlyContinue
+                    if ($it -and $it.LinkType -eq 'Junction') { cmd /c rmdir "`"$other`"" | Out-Null; Log "Alte Verknuepfung entfernt: $other" }
+                }
             }
             New-Item -ItemType Directory -Force $SkinPath | Out-Null
             cmd /c mklink /J "`"$link`"" "`"$target`"" | Out-Null

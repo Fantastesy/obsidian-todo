@@ -50,6 +50,7 @@ const
 
 var
   RainmeterExe, SkinPath, ObsidianExe: String;
+  OldTodoDir: String;   { Ordner der Todo.md einer vorhandenen (alten) Obsidian-Todo-Liste }
   VaultList, TodoInList: TStringList;
   PrevVault, PrevTodoDir: String;
   PrereqPage: TWizardPage;
@@ -99,7 +100,7 @@ var
   I, P: Integer;
   Key, Value, OutFile: String;
 begin
-  RainmeterExe := ''; SkinPath := ''; ObsidianExe := '';
+  RainmeterExe := ''; SkinPath := ''; ObsidianExe := ''; OldTodoDir := '';
   VaultList.Clear; TodoInList.Clear;
   OutFile := ExpandConstant('{tmp}\detect.txt');
   DeleteFile(OutFile);
@@ -115,7 +116,8 @@ begin
     else if Key = 'SkinPath' then SkinPath := Value
     else if Key = 'ObsidianExe' then ObsidianExe := Value
     else if Key = 'Vault' then VaultList.Add(Value)
-    else if Key = 'TodoIn' then TodoInList.Add(Value);
+    else if Key = 'TodoIn' then TodoInList.Add(Value)
+    else if Key = 'OldTodo' then OldTodoDir := ExtractFileDir(Value);
   end;
 end;
 
@@ -148,6 +150,12 @@ var
   I, P: Integer;
 begin
   Result := Vault;
+  { vorhandene Liste weiterverwenden, wenn sie in diesem Vault liegt }
+  if (OldTodoDir <> '') and (Pos(Lowercase(AddBackslash(Vault)), Lowercase(AddBackslash(OldTodoDir))) = 1) then
+  begin
+    Result := OldTodoDir;
+    Exit;
+  end;
   if CompareText(RemoveBackslash(Vault), RemoveBackslash(PrevVault)) = 0 then
     if PrevTodoDir <> '' then begin Result := PrevTodoDir; Exit; end;
   for I := 0 to TodoInList.Count - 1 do
@@ -196,7 +204,9 @@ begin
   VaultPage.Add('Neuen Vault anlegen');
   VaultPage.SelectedValueIndex := 0;
   for I := 0 to VaultList.Count - 1 do
-    if CompareText(RemoveBackslash(VaultList[I]), RemoveBackslash(PrevVault)) = 0 then
+    if (PrevVault = '') and (OldTodoDir <> '') and (Pos(Lowercase(AddBackslash(VaultList[I])), Lowercase(AddBackslash(OldTodoDir))) = 1) then
+      VaultPage.SelectedValueIndex := I
+    else if CompareText(RemoveBackslash(VaultList[I]), RemoveBackslash(PrevVault)) = 0 then
       VaultPage.SelectedValueIndex := I;
 
   { Seite: neuer Vault }
