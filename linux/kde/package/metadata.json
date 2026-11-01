@@ -1,0 +1,16 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPlugin": {
+        "Id": "io.github.fantastesy.obsidiantodo",
+        "Name": "Obsidian Todo",
+        "Description": "Todo-Liste aus deinem Obsidian-Vault",
+        "Icon": "checkbox",
+        "Category": "Utilities",
+        "Authors": [ { "Name": "Fantastesy" } ],
+        "License": "MIT",
+        "Version": "1.0.0",
+        "Website": "https://github.com/Fantastesy/obsidian-todo",
+        "FormFactors": [ "desktop", "panel" ]
+    }
+}

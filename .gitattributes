@@ -1,0 +1,3 @@
+# Linux-Dateien immer mit LF auschecken (sonst laufen die Skripte unter Linux nicht)
+*.sh text eol=lf
+linux/** text eol=lf

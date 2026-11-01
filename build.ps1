@@ -15,7 +15,8 @@ $version = (Get-Content (Join-Path $root 'VERSION') -TotalCount 1).Trim()
 if (-not $Repo -and (Test-Path (Join-Path $root 'REPO'))) { $Repo = (Get-Content (Join-Path $root 'REPO') -TotalCount 1).Trim() }
 
 Write-Host "Obsidian Todo $version"
-if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
+# nur die eigenen Ausgaben loeschen (das Linux-Setup liegt auch in dist\)
+foreach ($old in (Join-Path $dist 'skin'), (Join-Path $dist 'ObsidianTodo-Setup.exe')) { if (Test-Path $old) { Remove-Item $old -Recurse -Force } }
 New-Item -ItemType Directory -Force $res | Out-Null
 
 # 1. Rainmeter-Dateien erzeugen

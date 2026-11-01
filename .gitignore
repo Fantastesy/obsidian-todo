@@ -2,3 +2,4 @@ dist/
 *.exe
 sandbox-out/
 *.wsb
+linux/tests/*.png
