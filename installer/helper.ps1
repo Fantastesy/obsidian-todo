@@ -20,6 +20,11 @@ function Find-Rainmeter {
     # 1. laufendes Rainmeter (auch portable Installationen)
     $p = Get-Process Rainmeter -ErrorAction SilentlyContinue | Select-Object -First 1
     $exe = if ($p) { $p.Path }
+    # aus 32-Bit-PowerShell liefert Get-Process fuer 64-Bit-Programme keinen Pfad -> ueber WMI fragen
+    if (-not $exe) {
+        $exe = Get-CimInstance Win32_Process -Filter "Name='Rainmeter.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.ExecutablePath } | Select-Object -First 1 -ExpandProperty ExecutablePath
+    }
     # 2. normale Installation
     if (-not $exe) {
         foreach ($k in 'HKLM:\SOFTWARE\WOW6432Node\Rainmeter', 'HKLM:\SOFTWARE\Rainmeter', 'HKCU:\SOFTWARE\Rainmeter') {
@@ -27,7 +32,10 @@ function Find-Rainmeter {
             if ($d -and (Test-Path (Join-Path $d 'Rainmeter.exe'))) { $exe = Join-Path $d 'Rainmeter.exe'; break }
         }
     }
-    if (-not $exe -and (Test-Path "$env:ProgramFiles\Rainmeter\Rainmeter.exe")) { $exe = "$env:ProgramFiles\Rainmeter\Rainmeter.exe" }
+    # ProgramW6432 = echtes "Programme" auch aus 32-Bit-PowerShell (ProgramFiles waere dort "Programme (x86)")
+    foreach ($pf in @($env:ProgramW6432, $env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ }) {
+        if (-not $exe -and (Test-Path "$pf\Rainmeter\Rainmeter.exe")) { $exe = "$pf\Rainmeter\Rainmeter.exe" }
+    }
     if (-not $exe) { return $null }
 
     # Einstellungsdatei: portable = neben der exe, sonst %APPDATA%\Rainmeter
@@ -113,6 +121,11 @@ try {
 
         'install' {
             if ($What -eq 'rainmeter') {
+                # Notbremse: laeuft schon ein Rainmeter (z. B. portabel), niemals ein zweites installieren -
+                # das Rainmeter-Setup wuerde das laufende beenden und den Autostart umbiegen
+                if (Get-CimInstance Win32_Process -Filter "Name='Rainmeter.exe'" -ErrorAction SilentlyContinue) {
+                    throw 'Rainmeter laeuft bereits - keine zweite Installation'
+                }
                 $f = if ($File) { $File } else { Get-LatestAsset $Sources.rainmeter[0] $Sources.rainmeter[1] }
                 Log "Installiere $f"
                 # Rainmeter installiert nach Programme und braucht dafuer Adminrechte (UAC-Abfrage)

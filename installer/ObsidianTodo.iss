@@ -71,11 +71,18 @@ begin
   Result := ExpandConstant('{tmp}\helper.ps1');
 end;
 
+{ immer das 64-Bit-PowerShell (das Setup selbst ist 32 Bit; das 32-Bit-PowerShell sieht 64-Bit-Programme nicht richtig) }
+function PowerShellExe: String;
+begin
+  Result := ExpandConstant('{sysnative}\WindowsPowerShell\v1.0\powershell.exe');
+  if not FileExists(Result) then Result := 'powershell.exe';
+end;
+
 function RunHelper(const Args: String): Boolean;
 var
   RC: Integer;
 begin
-  Result := Exec('powershell.exe',
+  Result := Exec(PowerShellExe,
     '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + HelperPath + '" ' + Args,
     '', SW_HIDE, ewWaitUntilTerminated, RC) and (RC = 0);
 end;
@@ -414,7 +421,7 @@ var
 begin
   if CurUninstallStep = usUninstall then
   begin
-    Exec('powershell.exe', '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
+    Exec(PowerShellExe, '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
       ExpandConstant('{app}\helper.ps1') + '" -Mode uninstall', '', SW_HIDE, ewWaitUntilTerminated, RC);
     RegDeleteKeyIncludingSubkeys(HKCU, RegKey);
   end;
