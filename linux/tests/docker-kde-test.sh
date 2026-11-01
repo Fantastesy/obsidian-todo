@@ -4,7 +4,7 @@
 #   bash linux/tests/docker-kde-test.sh [setup-datei] [bild-praefix]
 # Ablauf: frischer Container -> Setup im Terminal-Modus (Obsidian nein, neuer Vault, Seitenleiste)
 #         -> CPU pruefen (keine Dauerschleife) -> Screenshots: Einblenden, danach, Maus am Rand.
-# Den Desktop kann man waehrenddessen unter http://localhost:3000 ansehen.
+# Den Desktop kann man waehrenddessen unter http://localhost:3010 ansehen.
 set -u
 export MSYS_NO_PATHCONV=1
 root="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -17,7 +17,7 @@ command -v docker >/dev/null || export PATH="/h/Windows stuff/Docker Desktop/res
 
 dist_win="$(cd "$(dirname "$setup")" && pwd -W 2>/dev/null || pwd)"
 docker rm -f $c >/dev/null 2>&1
-docker run -d --name $c --shm-size=1g -p 127.0.0.1:3000:3000 -e PUID=1000 -e PGID=1000 -e TZ=Europe/Berlin \
+docker run -d --name $c --shm-size=1g -p 127.0.0.1:3010:3000 -e PUID=1000 -e PGID=1000 -e TZ=Europe/Berlin \
     -e LC_ALL=de_DE.UTF-8 -e QT_FORCE_STDERR_LOGGING=1 -e "QT_LOGGING_RULES=qml.debug=true;js.debug=true" -v "$dist_win:/setup:ro" $img >/dev/null || exit 1
 for i in $(seq 1 60); do sleep 3; docker exec $c pgrep -x plasmashell >/dev/null 2>&1 && break; done
 sleep 15   # Plasma fertig starten lassen
@@ -47,4 +47,4 @@ sleep 14; shot 2-danach
 echo "== CPU plasmashell: $(cpu) %"
 echo "== Leisten:"
 docker exec $c insession bash -c 'f=~/.config/plasma-org.kde.plasma.desktop-appletsrc; awk "/^\[Containments\]\[[0-9]+\]\$/{c=\$0} /^(plugin|location|formfactor)=/{print c, \$0}" $f | grep -B2 -A0 obsidiantodo'
-echo "Fertig. Container laeuft weiter ($c, http://localhost:3000); entfernen: docker rm -f $c"
+echo "Fertig. Container laeuft weiter ($c, http://localhost:3010); entfernen: docker rm -f $c"
