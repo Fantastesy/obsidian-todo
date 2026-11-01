@@ -213,9 +213,16 @@ try {
             if (-not $known) {
                 # Erstinstallation: oben rechts statt oben links ueber den Desktop-Symbolen, auf dem Desktop (unter den Fenstern)
                 Start-Sleep -Seconds 1
-                & $RainmeterExe '!SetWindowPosition' '99%' '6%' '100%' '0%' $SkinName
                 & $RainmeterExe '!ZPos' '-2' $SkinName
                 & $RainmeterExe '!Draggable' '1' $SkinName
+                # Bezugspunkt = rechte obere Ecke der Liste, damit sie bei groesserer Breite nach links waechst
+                # (ohne Anker landete sie mit der linken Kante am rechten Rand, also ausserhalb des Bildschirms)
+                Add-Type -AssemblyName System.Windows.Forms
+                $wa = [Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+                & $RainmeterExe '!SetAnchor' '100%' '0' $SkinName
+                Start-Sleep -Milliseconds 500
+                & $RainmeterExe '!SetWindowPosition' "$($wa.Right - 24)" "$($wa.Top + 60)" '100%' '0' $SkinName
+                Log "Position: rechts oben bei $($wa.Right - 24),$($wa.Top + 60)"
             }
             Log "Fertig: $todo"
         }
