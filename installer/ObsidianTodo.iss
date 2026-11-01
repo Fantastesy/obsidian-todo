@@ -37,6 +37,9 @@ Source: "helper.ps1"; Flags: dontcopy
 Source: "helper.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SkinDir}\*"; DestDir: "{app}\ObsidianTodo"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[Icons]
+Name: "{userprograms}\Obsidian To-do entfernen"; Filename: "{uninstallexe}"; IconFilename: "{sys}\shell32.dll"; IconIndex: 31
+
 [UninstallDelete]
 ; vom Skin zur Laufzeit erzeugte Dateien (settings.inc, hotkey.txt, ...)
 Type: filesandordirs; Name: "{app}\ObsidianTodo"
@@ -268,7 +271,8 @@ end;
 
 function WantObsidian: Boolean;
 begin
-  Result := NeedObsidian and ObsidianCheck.Checked;
+  { ohne Fenster (Updates, automatische Tests) nie ungefragt Obsidian installieren }
+  Result := NeedObsidian and ObsidianCheck.Checked and not WizardSilent;
 end;
 
 { Rainmeter/Obsidian laden (mit Fortschrittsanzeige) und installieren }

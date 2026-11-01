@@ -47,6 +47,8 @@ MaxItems=15
 MaxNotes=30
 MaxSubs=30
 Width=460
+; eigene Einstellungen (Breite), schreibt das Hilfe-Fenster; bleiben bei Updates erhalten
+@IncludePrefs=#@#prefs.inc
 RowH=36
 NoteH=30
 ListTop=62
@@ -179,6 +181,8 @@ ToolTipText=In Obsidian öffnen
 [MeterCount]
 Meter=String
 DynamicVariables=1
+; beim Einblenden steht hier "Ausblenden" (todo.lua)
+LeftMouseUpAction=[!CommandMeasure MeasureTodo "HideReveal()"]
 X=(#Width#-62)
 Y=22
 StringAlign=Right
@@ -1008,8 +1012,12 @@ $helpLines = @(
     '#Farben'
     'Orange: heute fällig'
     'Rot: überfällig'
+    '#Einblenden'
+    'Anmelden, Aufwachen, Entsperren: die Liste kommt kurz nach vorne (10 Sekunden pro offenem Punkt)'
+    'Ausblenden ✕ (oben rechts): sofort zurück auf den Desktop'
     '#Archiv'
     'Erledigte archivieren: abgehakte Punkte wandern ins Archiv'
+    '#Breite der Liste'
 )
 $hw = 600
 $archive = '["obsidian://open?path=#ArchiveUrl#"]'
@@ -1023,6 +1031,8 @@ DynamicWindowSize=1
 [Variables]
 ArchiveUrl=
 @IncludeSettings=#@#settings.inc
+Width=460
+@IncludePrefs=#@#prefs.inc
 FontFace=Segoe UI
 IconFace=Segoe Fluent Icons
 ColorBg=12,12,18,235
@@ -1111,10 +1121,45 @@ Text=$l
     }
 }
 $hini += @"
+; Breite: schreibt Width in prefs.inc (bleibt bei Updates erhalten) und laedt die Liste neu
+[MeasureWidth]
+Measure=Calc
+Formula=#Width#
+IfCondition=MeasureWidth < 420
+IfTrueAction=[!SetOption Width1 SolidColor "138,108,245,255"][!SetOption Width1 FontColor "#ColorText#"]
+IfCondition2=(MeasureWidth >= 420) && (MeasureWidth < 520)
+IfTrueAction2=[!SetOption Width2 SolidColor "138,108,245,255"][!SetOption Width2 FontColor "#ColorText#"]
+IfCondition3=MeasureWidth >= 520
+IfTrueAction3=[!SetOption Width3 SolidColor "138,108,245,255"][!SetOption Width3 FontColor "#ColorText#"]
+
+
+"@
+$wx = '22'
+foreach ($w in @(@('Width1', 'Schmal', 380), @('Width2', 'Normal', 460), @('Width3', 'Breit', 560))) {
+    $hini += @"
+[$($w[0])]
+Meter=String
+X=$wx
+Y=$(if ($wx -eq '22') { '8R' } else { 'r' })
+Padding=14,6,14,6
+FontFace=#FontFace#
+FontSize=11
+FontWeight=600
+FontColor=#ColorNote#
+SolidColor=255,255,255,16
+AntiAlias=1
+Text=$($w[1])
+LeftMouseUpAction=[!WriteKeyValue Variables Width $($w[2]) "#@#prefs.inc"][!Refresh ObsidianTodo][!Refresh]
+
+
+"@
+    $wx = '8R'
+}
+$hini += @"
 [MeterEnd]
 Meter=String
 X=22
-Y=16R
+Y=18R
 FontFace=#FontFace#
 FontSize=11
 FontWeight=600

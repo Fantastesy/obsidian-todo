@@ -16,6 +16,8 @@ local archivePath, createdIcon, doneIcon, cancelIcon
 -- Wiederholung "🔁 täglich" und Uhrzeit "⏰ 15:00"
 local repeatIcon, timeIcon
 local notified, lastMinute = {}, nil
+-- Einblenden beim Anmelden/Aufwachen/Entsperren: bis revealUntil ueber allen Fenstern
+local revealUntil, lastTick = nil, os.time()
 
 local CHECK = '^%s*[-*+] %[([ xX])%] ?(.*)$'
 
@@ -342,9 +344,20 @@ local function heightOf(m, minH)
 	return math.max(SKIN:GetMeter(m):GetH(), minH)
 end
 
+-- Zaehler oben rechts; waehrend die Liste eingeblendet ist: Knopf 'Ausblenden'
+local function setCount(openCount)
+	if revealUntil then
+		SKIN:Bang('!SetOption', 'MeterCount', 'Text', 'Ausblenden ✕')
+		SKIN:Bang('!SetOption', 'MeterCount', 'FontColor', SKIN:GetVariable('ColorAccent'))
+	else
+		SKIN:Bang('!SetOption', 'MeterCount', 'Text', openCount .. ' offen')
+		SKIN:Bang('!SetOption', 'MeterCount', 'FontColor', SKIN:GetVariable('ColorDone'))
+	end
+end
+
 local function render(openCount, doneCount)
 	lastOpen, lastDone = openCount, doneCount
-	SKIN:Bang('!SetOption', 'MeterCount', 'Text', openCount .. ' offen')
+	setCount(openCount)
 	SKIN:Bang('!SetOption', 'MeterFold', 'Text', SKIN:GetVariable(collapsed and 'FoldClosed' or 'FoldOpen'))
 	if collapsed then
 		SKIN:Bang('!HideMeterGroup', 'List')
@@ -465,7 +478,7 @@ local function render(openCount, doneCount)
 	y = y + rowH + 10
 
 	SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0,0,' .. width .. ',' .. y .. ',12 | Fill Color #ColorBg# | StrokeWidth 0')
-	SKIN:Bang('!SetOption', 'MeterCount', 'Text', openCount .. ' offen')
+	setCount(openCount)
 	SKIN:Bang('!UpdateMeter', '*')
 	SKIN:Bang('!Redraw')
 end
@@ -621,6 +634,11 @@ local function checkReminders()
 end
 
 function Update()
+	-- Aufwachen aus dem Standby: waehrend des Schlafs laeuft kein Update -> grosse Zeitluecke
+	local now = os.time()
+	if now - lastTick > 90 then Reveal() end
+	lastTick = now
+	if revealUntil and now >= revealUntil then HideReveal() end
 	-- jede Minute neu zeichnen, damit "heute 15:00" rechtzeitig rot wird
 	local minute = os.date('%H:%M')
 	refresh(minute ~= lastMinute)
@@ -952,4 +970,22 @@ function Cleanup()
 	lines = kept
 	save()
 	refresh(true)
+end
+
+-- ---------- Einblenden (Anmelden, Aufwachen, Entsperren) ----------
+-- Die Liste kommt fuer 10 Sekunden pro offenem Punkt (hoechstens 2 Minuten) ueber alle Fenster,
+-- danach zurueck auf den Desktop. Aufgerufen per Aufgabenplanung (Anmelden/Entsperren) und aus Update().
+function Reveal()
+	if not lastOpen then refresh(true) end
+	if not lastOpen or lastOpen == 0 then return end
+	revealUntil = os.time() + math.min(120, 10 * lastOpen)
+	SKIN:Bang('!ZPos', '2')
+	render(lastOpen, lastDone)
+end
+
+function HideReveal()
+	if not revealUntil then return end
+	revealUntil = nil
+	SKIN:Bang('!ZPos', '-2')
+	render(lastOpen, lastDone)
 end

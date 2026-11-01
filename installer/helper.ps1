@@ -157,6 +157,23 @@ try {
             $vaultName = Split-Path $Vault.TrimEnd('\') -Leaf
             $inc = "[Variables]`r`nTodoFile=$todo`r`nArchiveFile=$archive`r`nVaultName=$vaultName`r`nTodoUrl=$(Url $todo)`r`nArchiveUrl=$(Url $archive)`r`n"
             [IO.File]::WriteAllText((Join-Path $res 'settings.inc'), $inc, [Text.Encoding]::Unicode)
+            # eigene Einstellungen (Breite) - nur anlegen, nie ueberschreiben
+            $prefs = Join-Path $res 'prefs.inc'
+            if (-not (Test-Path -LiteralPath $prefs)) { [IO.File]::WriteAllText($prefs, "[Variables]`r`n", [Text.Encoding]::Unicode) }
+
+            # Einblenden beim Anmelden und Entsperren: Aufgabe ruft Reveal() in der Liste auf
+            # (Aufwachen aus dem Standby erkennt die Liste selbst an der Zeitluecke)
+            try {
+                $user = "$env:USERDOMAIN\$env:USERNAME"
+                $act = New-ScheduledTaskAction -Execute $RainmeterExe -Argument '!CommandMeasure MeasureTodo "Reveal()" ObsidianTodo'
+                $tLogon = New-ScheduledTaskTrigger -AtLogOn -User $user
+                $tLogon.Delay = 'PT30S'
+                $cls = Get-CimClass -Namespace Root/Microsoft/Windows/TaskScheduler -ClassName MSFT_TaskSessionStateChangeTrigger
+                $tUnlock = New-CimInstance -CimClass $cls -ClientOnly -Property @{ StateChange = 8; UserId = $user; Delay = 'PT3S' }
+                $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 1)
+                $pr = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+                Register-ScheduledTask -TaskName 'ObsidianTodo-Einblenden' -Action $act -Trigger @($tLogon, $tUnlock) -Settings $set -Principal $pr -Force | Out-Null
+            } catch { Log "Aufgabe fuers Einblenden nicht angelegt: $_" }
 
             # Skin im Rainmeter-Skins-Ordner per Verzeichnisverknuepfung (Junction, keine Adminrechte noetig)
             $link = Join-Path $SkinPath $SkinName
@@ -194,9 +211,11 @@ try {
             Start-Sleep -Seconds 2
             & $RainmeterExe '!ActivateConfig' $SkinName 'Todo.ini'
             if (-not $known) {
-                # Erstinstallation: oben rechts statt oben links ueber den Desktop-Symbolen
+                # Erstinstallation: oben rechts statt oben links ueber den Desktop-Symbolen, auf dem Desktop (unter den Fenstern)
                 Start-Sleep -Seconds 1
                 & $RainmeterExe '!SetWindowPosition' '99%' '6%' '100%' '0%' $SkinName
+                & $RainmeterExe '!ZPos' '-2' $SkinName
+                & $RainmeterExe '!Draggable' '1' $SkinName
             }
             Log "Fertig: $todo"
         }
@@ -214,6 +233,7 @@ try {
                 if ($item -and $item.LinkType -eq 'Junction') { cmd /c rmdir "`"$link`"" | Out-Null }
             }
             Remove-Item 'HKCU:\Software\Classes\todo-rm' -Recurse -Force -ErrorAction SilentlyContinue
+            Unregister-ScheduledTask -TaskName 'ObsidianTodo-Einblenden' -Confirm:$false -ErrorAction SilentlyContinue
             Remove-Item (Join-Path $env:LOCALAPPDATA 'ObsidianTodo') -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
