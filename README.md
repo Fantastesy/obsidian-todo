@@ -53,7 +53,7 @@ Windows: über Einstellungen → Apps. Linux: Startmenü → „Obsidian To-do e
 Windows-Setup (Windows 10/11, [Inno Setup 7](https://jrsoftware.org/isinfo.php)):
 
 ```powershell
-powershell -File build.ps1            # -> dist\ObsidianTodo-Setup.exe
+powershell -File build.ps1            # -> dist\ObsidianTodo-Setup-<version>.exe
 ```
 
 KDE-Setup (Linux oder WSL):
@@ -75,7 +75,7 @@ node linux/tests/core-test.js         # Tests für die Logik der KDE-Version
 | `linux/kde/setup.sh`, `update.sh` | Linux-Setup und automatische Updates |
 | `linux/tests/` | Tests (Logik mit Node, Widget und Setup in WSL/Ubuntu) |
 
-Für ein Release: Version in `VERSION` erhöhen, beide Builds ausführen, Release mit Tag `v<VERSION>` anlegen und `dist\ObsidianTodo-Setup.exe` sowie `dist/ObsidianTodo-KDE-Setup.sh` anhängen. Die Dateinamen müssen so bleiben, die Updater suchen genau danach.
+Für ein Release: Version in `VERSION` erhöhen, beide Builds ausführen, Release mit Tag `v<VERSION>` anlegen und `dist\ObsidianTodo-Setup-<version>.exe` sowie `dist/ObsidianTodo-KDE-Setup-<version>.sh` anhängen. Die Updater erkennen die Dateien am Namensanfang (`ObsidianTodo-Setup` bzw. `ObsidianTodo-KDE-Setup`), der bleibt also immer gleich.
 
 ## Lizenz
 
