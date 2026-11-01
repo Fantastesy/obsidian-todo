@@ -1,62 +1,75 @@
-// Liste der Punkte (Desktop-Widget bzw. Popup im Panel)
+// Liste der Punkte im Windows-Look: dunkel, halbdurchsichtig, abgerundet
 import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.components as PC3
-import org.kde.plasma.extras as PlasmaExtras
 import org.kde.kirigami as Kirigami
+import "../code/palette.js" as P
 
-ColumnLayout {
+Rectangle {
     id: view
     property var app
     property bool showHelp: false
 
-    spacing: Kirigami.Units.smallSpacing
-    Layout.preferredWidth: Kirigami.Units.gridUnit * 24
+    color: P.bg
+    radius: Kirigami.Units.gridUnit * 0.75
+    // dunkle Farbgruppe, damit Eingabefelder und Texte von Plasma hell auf dunkel erscheinen
+    Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
+    Kirigami.Theme.inherit: false
+
+    implicitWidth: Kirigami.Units.gridUnit * 24
+    implicitHeight: col.implicitHeight + Kirigami.Units.largeSpacing * 2
+    Layout.preferredWidth: implicitWidth
     Layout.minimumWidth: Kirigami.Units.gridUnit * 16
     Layout.preferredHeight: implicitHeight
+    Layout.minimumHeight: implicitHeight
 
-    // ---------- Kopf ----------
-    RowLayout {
-        Layout.fillWidth: true
-        Layout.leftMargin: Kirigami.Units.smallSpacing
-        Kirigami.Heading {
-            text: "Todo"
-            level: 2
-            HoverHandler { cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: view.app.openInObsidian() }
-            PC3.ToolTip { text: "In Obsidian öffnen" }
-        }
-        PC3.ToolButton {
-            icon.name: "help-contextual"
-            display: PC3.AbstractButton.IconOnly
-            checkable: true
-            checked: view.showHelp
-            onToggled: view.showHelp = checked
-            PC3.ToolTip { text: "Was die Liste kann" }
-        }
-        Item { Layout.fillWidth: true }
-        PC3.Label {
-            text: view.app.configMissing ? "nicht eingerichtet"
-                : view.app.fileMissing ? "Datei fehlt"
-                : view.app.model ? view.app.model.openCount + " offen" : ""
-            color: view.app.fileMissing || view.app.configMissing ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.disabledTextColor
-        }
-        PC3.ToolButton {
-            icon.name: view.app.collapsed ? "arrow-down" : "arrow-up"
-            display: PC3.AbstractButton.IconOnly
-            onClicked: view.app.collapsed = !view.app.collapsed
-            PC3.ToolTip { text: "Liste ein-/ausklappen" }
-        }
-    }
+    ColumnLayout {
+        id: col
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: Kirigami.Units.largeSpacing
+        spacing: Kirigami.Units.smallSpacing
 
-    // ---------- Hilfe ----------
-    PlasmaExtras.Representation {
-        visible: view.showHelp
-        Layout.fillWidth: true
-        implicitHeight: helpCol.implicitHeight
+        // ---------- Kopf ----------
+        RowLayout {
+            Layout.fillWidth: true
+            PC3.Label {
+                text: "Todo"
+                color: P.text
+                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.45
+                font.bold: true
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                TapHandler { onTapped: view.app.openInObsidian() }
+                PC3.ToolTip { text: "In Obsidian öffnen" }
+            }
+            Chip {
+                flat: true
+                iconName: "help-contextual"
+                textColor: P.done
+                selected: view.showHelp
+                onClicked: view.showHelp = !view.showHelp
+            }
+            Item { Layout.fillWidth: true }
+            PC3.Label {
+                text: view.app.configMissing ? "nicht eingerichtet"
+                    : view.app.fileMissing ? "Datei fehlt"
+                    : view.app.model ? view.app.model.openCount + " offen" : ""
+                color: view.app.fileMissing || view.app.configMissing ? P.over : P.done
+            }
+            Chip {
+                flat: true
+                iconName: view.app.collapsed ? "arrow-down" : "arrow-up"
+                textColor: P.done
+                onClicked: view.app.collapsed = !view.app.collapsed
+            }
+        }
+
+        // ---------- Hilfe ----------
         ColumnLayout {
-            id: helpCol
-            width: parent.width
+            visible: view.showHelp && !view.app.collapsed
+            Layout.fillWidth: true
+            Layout.bottomMargin: Kirigami.Units.smallSpacing
             spacing: 2
             Repeater {
                 model: [
@@ -72,65 +85,68 @@ ColumnLayout {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     textFormat: Text.StyledText
+                    color: P.note
                     text: "<b>" + modelData[0] + ":</b> " + modelData[1]
                     font: Kirigami.Theme.smallFont
                 }
             }
-            Kirigami.Separator { Layout.fillWidth: true; Layout.topMargin: Kirigami.Units.smallSpacing }
-        }
-    }
-
-    // ---------- Hinweise ----------
-    PC3.Label {
-        visible: view.app.configMissing && !view.app.collapsed
-        Layout.fillWidth: true
-        Layout.margins: Kirigami.Units.smallSpacing
-        wrapMode: Text.WordWrap
-        text: "Noch nicht eingerichtet – bitte das Obsidian-Todo-Setup ausführen."
-    }
-
-    // ---------- Punkte ----------
-    ColumnLayout {
-        visible: !view.app.collapsed && !view.app.configMissing
-        Layout.fillWidth: true
-        spacing: 0
-
-        Repeater {
-            model: view.app.rows
-            delegate: TaskRow {
-                Layout.fillWidth: true
-                app: view.app
-                row: modelData
-            }
         }
 
         PC3.Label {
-            id: moreLabel
-            readonly property int hidden: view.app.model ? view.app.model.display.length - view.app.rows.length : 0
-            visible: (view.app.model && view.app.model.display.length === 0) || hidden > 0
+            visible: view.app.configMissing && !view.app.collapsed
             Layout.fillWidth: true
-            Layout.leftMargin: Kirigami.Units.largeSpacing
-            Layout.topMargin: Kirigami.Units.smallSpacing
-            color: Kirigami.Theme.disabledTextColor
-            text: moreLabel.hidden > 0 ? "+ " + moreLabel.hidden + " weitere in Obsidian" : "Alles erledigt"
-            HoverHandler { cursorShape: moreLabel.hidden > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor }
-            TapHandler { onTapped: if (moreLabel.hidden > 0) view.app.openInObsidian() }
+            wrapMode: Text.WordWrap
+            color: P.note
+            text: "Noch nicht eingerichtet – bitte das Obsidian-Todo-Setup ausführen."
         }
 
-        RowLayout {
+        // ---------- Punkte ----------
+        ColumnLayout {
+            visible: !view.app.collapsed && !view.app.configMissing
             Layout.fillWidth: true
-            Layout.topMargin: Kirigami.Units.smallSpacing
-            PC3.ToolButton {
-                icon.name: "list-add"
-                text: "Neuer Punkt"
-                onClicked: view.app.openForm(null)
+            spacing: 0
+
+            Repeater {
+                model: view.app.rows
+                delegate: TaskRow {
+                    Layout.fillWidth: true
+                    app: view.app
+                    row: modelData
+                }
             }
-            Item { Layout.fillWidth: true }
-            PC3.ToolButton {
-                visible: view.app.model && view.app.model.doneCount > 0
-                icon.name: "archive-insert"
-                text: "Erledigte archivieren"
-                onClicked: view.app.cleanup()
+
+            PC3.Label {
+                id: moreLabel
+                readonly property int hidden: view.app.model ? view.app.model.display.length - view.app.rows.length : 0
+                visible: (view.app.model && view.app.model.display.length === 0) || hidden > 0
+                Layout.fillWidth: true
+                Layout.leftMargin: Kirigami.Units.smallSpacing
+                Layout.topMargin: Kirigami.Units.smallSpacing
+                color: P.done
+                text: moreLabel.hidden > 0 ? "+ " + moreLabel.hidden + " weitere in Obsidian" : "Alles erledigt"
+                HoverHandler { cursorShape: moreLabel.hidden > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                TapHandler { onTapped: if (moreLabel.hidden > 0) view.app.openInObsidian() }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: Kirigami.Units.smallSpacing
+                PC3.Label {
+                    text: "+ Neuer Punkt"
+                    color: P.accent
+                    font.bold: true
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: view.app.openForm(null) }
+                }
+                Item { Layout.fillWidth: true }
+                PC3.Label {
+                    visible: view.app.model && view.app.model.doneCount > 0
+                    text: "Erledigte archivieren"
+                    color: P.done
+                    font: Kirigami.Theme.smallFont
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: view.app.cleanup() }
+                }
             }
         }
     }

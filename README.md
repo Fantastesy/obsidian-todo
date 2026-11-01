@@ -2,7 +2,6 @@
 
 Eine Todo-Liste für den Desktop, die direkt als Markdown in deinem [Obsidian](https://obsidian.md)-Vault gespeichert wird – unter **Windows** mit [Rainmeter](https://www.rainmeter.net), unter **Linux** als Widget für **KDE Plasma 6**. Beide nutzen dasselbe Dateiformat, dieselbe `Todo.md` funktioniert also auf beiden Systemen.
 
-![Obsidian Todo als KDE-Widget](docs/kde-widget.png)
 
 - Punkte abhaken, bearbeiten, löschen – alles landet als normale Obsidian-Checkbox (`- [ ] …`) in `Todo.md`
 - Fälligkeitsdatum, Uhrzeit mit Windows-Erinnerung („Erledigt“ / „In 15 Min nochmal“)

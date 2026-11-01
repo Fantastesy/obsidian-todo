@@ -1,9 +1,10 @@
-// Ein Punkt der Liste: Kaestchen, Text, Termin, Unteraufgaben, aufklappbare Notizen
+// Ein Punkt der Liste: Kaestchen, Text, Termin, Unteraufgaben, aufklappbare Notizen (Windows-Look)
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import org.kde.plasma.components as PC3
 import org.kde.kirigami as Kirigami
+import "../code/palette.js" as P
 
 ColumnLayout {
     id: taskRow
@@ -16,11 +17,6 @@ ColumnLayout {
 
     spacing: 0
 
-    function dueColor(state) {
-        if (state === "over") return Kirigami.Theme.negativeTextColor;
-        if (state === "today") return Kirigami.Theme.neutralTextColor;
-        return Kirigami.Theme.disabledTextColor;
-    }
     function startEdit(kind, line, orig, text) {
         editKind = kind; editLine = line; editOrig = orig || "";
         editor.text = text || "";
@@ -38,16 +34,11 @@ ColumnLayout {
     }
 
     // ---------- Kopfzeile ----------
-    Item {
+    Rectangle {
         Layout.fillWidth: true
-        implicitHeight: head.implicitHeight + Kirigami.Units.smallSpacing
-
-        Rectangle {
-            anchors.fill: parent
-            radius: Kirigami.Units.cornerRadius
-            color: Kirigami.Theme.highlightColor
-            opacity: rowHover.hovered ? 0.12 : 0
-        }
+        implicitHeight: head.implicitHeight + Kirigami.Units.smallSpacing * 2
+        radius: Kirigami.Units.gridUnit * 0.4
+        color: rowHover.hovered ? P.hover : "transparent"
         HoverHandler { id: rowHover }
         TapHandler {
             acceptedButtons: Qt.RightButton
@@ -59,12 +50,14 @@ ColumnLayout {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Kirigami.Units.smallSpacing
+            anchors.leftMargin: Kirigami.Units.smallSpacing
+            spacing: Kirigami.Units.largeSpacing
 
-            PC3.CheckBox {
+            Check {
+                Layout.alignment: Qt.AlignTop
+                Layout.topMargin: 2
                 checked: taskRow.row.done
                 onToggled: taskRow.app.toggle(taskRow.row.line, taskRow.row.orig)
-                Layout.alignment: Qt.AlignTop
             }
             ColumnLayout {
                 Layout.fillWidth: true
@@ -73,23 +66,24 @@ ColumnLayout {
                     Layout.fillWidth: true
                     text: taskRow.row.title
                     wrapMode: Text.Wrap
+                    font.weight: Font.DemiBold
                     font.strikeout: taskRow.row.done
-                    color: taskRow.row.done ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.textColor
+                    color: taskRow.row.done ? P.done : P.text
                 }
                 RowLayout {
                     visible: taskRow.row.dueLabel !== ""
-                    spacing: 2
+                    spacing: 3
                     Kirigami.Icon {
                         source: taskRow.row.repeat ? "view-refresh" : "view-calendar"
                         implicitWidth: Kirigami.Units.iconSizes.small
                         implicitHeight: Kirigami.Units.iconSizes.small
-                        color: taskRow.dueColor(taskRow.row.dueState)
+                        color: P.dueColor(taskRow.row.dueState)
                         isMask: true
                     }
                     PC3.Label {
                         text: taskRow.row.dueLabel
                         font: Kirigami.Theme.smallFont
-                        color: taskRow.dueColor(taskRow.row.dueState)
+                        color: P.dueColor(taskRow.row.dueState)
                     }
                 }
             }
@@ -97,17 +91,16 @@ ColumnLayout {
                 visible: taskRow.row.subs.length > 0
                 text: taskRow.row.subsDone + "/" + taskRow.row.subs.length
                 font: Kirigami.Theme.smallFont
-                color: Kirigami.Theme.disabledTextColor
+                color: P.done
             }
-            PC3.ToolButton {
-                icon.name: "mail-attachment"
+            Chip {
+                flat: true
+                iconName: "mail-attachment"
                 text: taskRow.row.notes.length > 0 ? taskRow.row.notes.length : ""
-                display: taskRow.row.notes.length > 0 ? PC3.AbstractButton.TextBesideIcon : PC3.AbstractButton.IconOnly
-                checkable: true
-                checked: taskRow.row.open
-                opacity: checked || rowHover.hovered || taskRow.row.notes.length > 0 ? 1 : 0.35
+                textColor: taskRow.row.open ? P.accent : P.done
+                bold: false
+                opacity: taskRow.row.open || rowHover.hovered || taskRow.row.notes.length > 0 ? 1 : 0.4
                 onClicked: taskRow.app.toggleNotes(taskRow.row.key)
-                PC3.ToolTip { text: "Notizen, Links und Dateien" }
             }
         }
     }
@@ -117,10 +110,12 @@ ColumnLayout {
         model: taskRow.row.subs
         delegate: RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+            Layout.leftMargin: Kirigami.Units.gridUnit * 1.6
+            Layout.topMargin: 2
             visible: !(taskRow.editKind === "sub" && taskRow.editLine === modelData.line)
-            spacing: Kirigami.Units.smallSpacing
-            PC3.CheckBox {
+            spacing: Kirigami.Units.largeSpacing
+            Check {
+                size: Kirigami.Units.gridUnit * 0.85
                 checked: modelData.done
                 onToggled: taskRow.app.toggleSub(taskRow.row.line, taskRow.row.orig, modelData.line, modelData.orig)
             }
@@ -129,7 +124,7 @@ ColumnLayout {
                 text: modelData.title + (modelData.dueLabel ? "  · " + modelData.dueLabel : "")
                 wrapMode: Text.Wrap
                 font.strikeout: modelData.done
-                color: modelData.done ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.textColor
+                color: modelData.done ? P.done : P.note
                 TapHandler {
                     acceptedButtons: Qt.RightButton
                     onTapped: taskRow.startEdit("sub", modelData.line, modelData.orig, taskRow.app.childInput(modelData.line))
@@ -142,8 +137,9 @@ ColumnLayout {
     ColumnLayout {
         visible: taskRow.row.open
         Layout.fillWidth: true
-        Layout.leftMargin: Kirigami.Units.gridUnit * 2
-        spacing: 2
+        Layout.leftMargin: Kirigami.Units.gridUnit * 1.6
+        Layout.topMargin: 2
+        spacing: 3
 
         Repeater {
             model: taskRow.row.notes
@@ -153,8 +149,8 @@ ColumnLayout {
                 text: modelData.text
                 wrapMode: Text.Wrap
                 font.underline: modelData.link !== ""
-                color: modelData.link !== "" ? Kirigami.Theme.linkColor : Kirigami.Theme.textColor
-                HoverHandler { cursorShape: modelData.link !== "" ? Qt.PointingHandCursor : Qt.IBeamCursor }
+                color: modelData.link !== "" ? P.accent : P.note
+                HoverHandler { cursorShape: modelData.link !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor }
                 TapHandler {
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
                     onTapped: (point, button) => {
@@ -162,16 +158,24 @@ ColumnLayout {
                         else taskRow.app.openLink(modelData.link);
                     }
                 }
-                PC3.ToolTip { text: "Rechtsklick: bearbeiten (leer = löschen)" }
             }
         }
 
         RowLayout {
             visible: taskRow.editKind === ""
-            spacing: 0
-            PC3.ToolButton { text: "+ Notiz"; onClicked: taskRow.startEdit("addnote", -1, "", "") }
-            PC3.ToolButton { text: "+ Unteraufgabe"; onClicked: taskRow.startEdit("addsub", -1, "", "") }
-            PC3.ToolButton { text: "+ Datei"; onClicked: fileDialog.open() }
+            spacing: Kirigami.Units.largeSpacing
+            Repeater {
+                model: [["+ Notiz", "addnote"], ["+ Unteraufgabe", "addsub"], ["+ Datei", "file"]]
+                delegate: PC3.Label {
+                    text: modelData[0]
+                    color: P.accent
+                    font: Kirigami.Theme.smallFont
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    TapHandler {
+                        onTapped: modelData[1] === "file" ? fileDialog.open() : taskRow.startEdit(modelData[1], -1, "", "")
+                    }
+                }
+            }
         }
     }
 
@@ -180,8 +184,15 @@ ColumnLayout {
         id: editor
         visible: taskRow.editKind !== ""
         Layout.fillWidth: true
-        Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+        Layout.leftMargin: Kirigami.Units.gridUnit * 1.6
+        Layout.topMargin: 2
+        color: P.text
+        placeholderTextColor: P.done
+        topPadding: Kirigami.Units.smallSpacing * 2
+        bottomPadding: Kirigami.Units.smallSpacing * 2
+        leftPadding: Kirigami.Units.largeSpacing
         placeholderText: taskRow.editKind === "addsub" || taskRow.editKind === "sub" ? "Unteraufgabe (Enter speichert, leer = löschen)" : "Notiz oder Link (Enter speichert, leer = löschen)"
+        background: Rectangle { radius: Kirigami.Units.gridUnit * 0.4; color: P.field; border.color: P.check; border.width: 1 }
         onAccepted: taskRow.finishEdit(true)
         Keys.onEscapePressed: taskRow.finishEdit(false)
         onActiveFocusChanged: if (!activeFocus && taskRow.editKind !== "") taskRow.finishEdit(false)

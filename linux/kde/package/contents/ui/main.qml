@@ -38,6 +38,8 @@ PlasmoidItem {
     onEditingChanged: if (!editing && pendingRebuild) rebuildRows()
 
     Plasmoid.icon: "checkbox"
+    // eigener dunkler, durchsichtiger Hintergrund wie unter Windows statt Plasma-Rahmen
+    Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
     toolTipMainText: "Obsidian Todo"
     toolTipSubText: model ? model.openCount + " offen" : ""
     switchWidth: Kirigami.Units.gridUnit * 14
