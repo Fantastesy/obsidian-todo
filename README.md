@@ -1,4 +1,4 @@
-# Obsidian Todo
+# Obsidian To-do
 
 Eine Todo-Liste für den Windows-Desktop, die direkt als Markdown in deinem [Obsidian](https://obsidian.md)-Vault gespeichert wird. Angezeigt wird sie mit [Rainmeter](https://www.rainmeter.net).
 
