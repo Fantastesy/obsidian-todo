@@ -33,11 +33,12 @@ ColumnLayout {
         else app.editChild(row.line, row.orig, editLine, editOrig, text);
     }
 
-    // ---------- Kopfzeile ----------
+    // ---------- Kopfzeile: Kaestchen, Text, Termin direkt dahinter, Bueroklammer rechts (wie unter Windows) ----------
     Rectangle {
+        id: headBg
         Layout.fillWidth: true
-        implicitHeight: head.implicitHeight + Kirigami.Units.smallSpacing * 2
-        radius: Kirigami.Units.gridUnit * 0.4
+        implicitHeight: Math.max(Kirigami.Units.gridUnit * 2.1, head.implicitHeight + Kirigami.Units.smallSpacing * 2)
+        radius: Kirigami.Units.gridUnit * 0.3
         color: rowHover.hovered ? P.hover : "transparent"
         HoverHandler { id: rowHover }
         TapHandler {
@@ -54,57 +55,57 @@ ColumnLayout {
             spacing: Kirigami.Units.largeSpacing
 
             Check {
-                Layout.alignment: Qt.AlignTop
-                Layout.topMargin: 2
+                Layout.alignment: Qt.AlignVCenter
                 checked: taskRow.row.done
                 onToggled: taskRow.app.toggle(taskRow.row.line, taskRow.row.orig)
             }
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 0
-                PC3.Label {
-                    Layout.fillWidth: true
-                    text: taskRow.row.title
-                    wrapMode: Text.Wrap
-                    font.weight: Font.DemiBold
-                    font.strikeout: taskRow.row.done
-                    color: taskRow.row.done ? P.done : P.text
+            PC3.Label {
+                id: titleLabel
+                // so breit wie noetig, damit der Termin direkt dahinter steht; lange Texte brechen um
+                Layout.maximumWidth: head.width - checkW - dueRow.implicitWidth - progress.implicitWidth - clip.implicitWidth - head.spacing * 4
+                readonly property real checkW: Kirigami.Units.gridUnit
+                text: taskRow.row.title
+                wrapMode: Text.WordWrap
+                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.1
+                font.weight: Font.DemiBold
+                font.strikeout: taskRow.row.done
+                color: taskRow.row.done ? P.done : P.text
+            }
+            RowLayout {
+                id: dueRow
+                visible: taskRow.row.dueLabel !== ""
+                spacing: 3
+                Kirigami.Icon {
+                    source: taskRow.row.repeat ? "view-refresh" : "view-calendar"
+                    implicitWidth: Kirigami.Units.iconSizes.small
+                    implicitHeight: Kirigami.Units.iconSizes.small
+                    color: P.dueColor(taskRow.row.dueState)
+                    isMask: true
                 }
-                RowLayout {
-                    visible: taskRow.row.dueLabel !== ""
-                    spacing: 3
-                    Kirigami.Icon {
-                        source: taskRow.row.repeat ? "view-refresh" : "view-calendar"
-                        implicitWidth: Kirigami.Units.iconSizes.small
-                        implicitHeight: Kirigami.Units.iconSizes.small
-                        color: P.dueColor(taskRow.row.dueState)
-                        isMask: true
-                    }
-                    PC3.Label {
-                        text: taskRow.row.dueLabel
-                        font: Kirigami.Theme.smallFont
-                        color: P.dueColor(taskRow.row.dueState)
-                    }
+                PC3.Label {
+                    text: taskRow.row.dueLabel
+                    font.weight: Font.DemiBold
+                    color: P.dueColor(taskRow.row.dueState)
                 }
             }
+            Item { Layout.fillWidth: true }
             PC3.Label {
+                id: progress
                 visible: taskRow.row.subs.length > 0
                 text: taskRow.row.subsDone + "/" + taskRow.row.subs.length
-                font: Kirigami.Theme.smallFont
+                font.weight: Font.DemiBold
                 color: P.done
             }
             Chip {
+                id: clip
                 flat: true
                 iconName: "mail-attachment"
                 text: taskRow.row.notes.length > 0 ? taskRow.row.notes.length : ""
                 textColor: taskRow.row.open ? P.accent : P.done
-                bold: false
-                opacity: taskRow.row.open || rowHover.hovered || taskRow.row.notes.length > 0 ? 1 : 0.4
                 onClicked: taskRow.app.toggleNotes(taskRow.row.key)
             }
         }
     }
-
     // ---------- Unteraufgaben (immer sichtbar) ----------
     Repeater {
         model: taskRow.row.subs
@@ -122,7 +123,7 @@ ColumnLayout {
             PC3.Label {
                 Layout.fillWidth: true
                 text: modelData.title + (modelData.dueLabel ? "  · " + modelData.dueLabel : "")
-                wrapMode: Text.Wrap
+                wrapMode: Text.WordWrap
                 font.strikeout: modelData.done
                 color: modelData.done ? P.done : P.note
                 TapHandler {
@@ -147,7 +148,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 visible: !(taskRow.editKind === "note" && taskRow.editLine === modelData.line)
                 text: modelData.text
-                wrapMode: Text.Wrap
+                wrapMode: Text.WordWrap
                 font.underline: modelData.link !== ""
                 color: modelData.link !== "" ? P.accent : P.note
                 HoverHandler { cursorShape: modelData.link !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor }

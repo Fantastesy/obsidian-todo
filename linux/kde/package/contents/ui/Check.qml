@@ -6,14 +6,14 @@ import "../code/palette.js" as P
 Rectangle {
     id: box
     property bool checked: false
-    property int size: Kirigami.Units.gridUnit
+    property int size: Math.round(Kirigami.Units.gridUnit * 0.9)
     signal toggled()
 
     implicitWidth: size
     implicitHeight: size
-    radius: size / 4
+    radius: Math.max(2, size / 6)
     color: checked ? P.check : (hov.hovered ? P.hover : "transparent")
-    border.width: checked ? 0 : 1.5
+    border.width: checked ? 0 : 1.2
     border.color: P.box
 
     // Haken selbst gezeichnet (Symbol-Icons werden nicht ueberall weiss eingefaerbt)

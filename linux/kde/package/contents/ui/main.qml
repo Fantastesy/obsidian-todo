@@ -389,6 +389,7 @@ PlasmoidItem {
             if (mode === "add") root.saveForm("new", -1, "", { title: "Testpunkt", date: "", time: "15:00", rule: "", notes: ["https://kde.org"] });
             else if (mode === "toggle") root.toggle(root.rows[0].line, root.rows[0].orig);
             else if (mode === "cleanup") root.cleanup();
+            else if (mode === "grab") root.fullRepresentationItem.grabToImage(function (r) { r.saveToFile(root.home + "/grab.png"); });
             else root.openForm(mode === "edit" && root.rows.length ? root.rows[0] : null);
         }
     }

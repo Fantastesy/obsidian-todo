@@ -43,12 +43,13 @@ Rectangle {
                 TapHandler { onTapped: view.app.openInObsidian() }
                 PC3.ToolTip { text: "In Obsidian öffnen" }
             }
-            Chip {
-                flat: true
-                iconName: "help-contextual"
-                textColor: P.done
-                selected: view.showHelp
-                onClicked: view.showHelp = !view.showHelp
+            PC3.Label {
+                text: "?"
+                color: view.showHelp ? P.accent : P.done
+                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.2
+                Layout.leftMargin: Kirigami.Units.smallSpacing
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                TapHandler { onTapped: view.showHelp = !view.showHelp }
             }
             Item { Layout.fillWidth: true }
             PC3.Label {
@@ -56,6 +57,7 @@ Rectangle {
                     : view.app.fileMissing ? "Datei fehlt"
                     : view.app.model ? view.app.model.openCount + " offen" : ""
                 color: view.app.fileMissing || view.app.configMissing ? P.over : P.done
+                font.weight: Font.DemiBold
             }
             Chip {
                 flat: true
