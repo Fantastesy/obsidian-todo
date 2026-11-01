@@ -40,6 +40,8 @@ Das Setup
 
 Erinnerungen mit den Knöpfen „Erledigt“ / „In 15 Min nochmal“ brauchen `notify-send` (Paket `libnotify-bin` bzw. `libnotify`). GNOME-Unterstützung ist geplant.
 
+Was sich in welcher Version geändert hat, steht im [CHANGELOG](CHANGELOG.md).
+
 ## Updates
 
 Windows und KDE prüfen beim Start und danach alle 6 Stunden, ob es ein neues Release gibt, und aktualisiert sich dann selbst im Hintergrund. Die SHA-256-Prüfsumme des Downloads wird dabei kontrolliert. Einstellungen und Todo-Liste bleiben erhalten.
