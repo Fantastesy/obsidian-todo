@@ -90,6 +90,47 @@ function Get-LatestAsset($repo, $pattern) {
 
 function Url($s) { [Uri]::EscapeDataString($s) }
 
+# Abschnitt in einer .ini setzen/ergaenzen, Kodierung beibehalten (Rainmeter.ini ist meist UTF-16 LE)
+function Set-IniSection($path, $section, $values) {
+    $enc = [Text.Encoding]::Unicode
+    $lines = New-Object System.Collections.Generic.List[string]
+    if (Test-Path -LiteralPath $path) {
+        $bytes = [IO.File]::ReadAllBytes($path)
+        if (-not ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE)) { $enc = New-Object Text.UTF8Encoding($false) }
+        foreach ($l in ($enc.GetString($bytes).TrimStart([char]0xFEFF) -split "`r?`n")) { $lines.Add($l) }
+    } else {
+        New-Item -ItemType Directory -Force (Split-Path $path) | Out-Null
+    }
+    $start = -1
+    for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i].Trim() -eq "[$section]") { $start = $i; break } }
+    if ($start -lt 0) {
+        if ($lines.Count -and $lines[$lines.Count - 1] -ne '') { $lines.Add('') }
+        $lines.Add("[$section]"); $start = $lines.Count - 1
+    }
+    $end = $lines.Count
+    for ($i = $start + 1; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^\s*\[') { $end = $i; break } }
+    foreach ($k in $values.Keys) {
+        $found = $false
+        for ($i = $start + 1; $i -lt $end; $i++) {
+            if ($lines[$i] -match "^\s*$([regex]::Escape($k))\s*=") { $lines[$i] = "$k=$($values[$k])"; $found = $true; break }
+        }
+        if (-not $found) { $lines.Insert($end, "$k=$($values[$k])"); $end++ }
+    }
+    [IO.File]::WriteAllText($path, ($lines -join "`r`n"), $enc)
+}
+
+# Ist das Fenster der Liste da? (Rainmeter benennt Skin-Fenster nach dem Pfad der .ini)
+# Fragt das mitgelieferte TodoHotkey.exe (fertig uebersetzt) - Add-Type wuerde zur Laufzeit C# uebersetzen,
+# und das ist nicht ueberall erlaubt. Kann nicht geprueft werden -> als "ok" werten (die .ini ist ohnehin gesetzt).
+function Test-SkinWindow {
+    $exe = Join-Path $App "$SkinName\@Resources\TodoHotkey.exe"
+    if (-not (Test-Path -LiteralPath $exe)) { return $true }
+    try {
+        $p = Start-Process -FilePath $exe -ArgumentList '--check', "`"\$SkinName\Todo.ini`"" -Wait -PassThru -WindowStyle Hidden
+        return $p.ExitCode -eq 0
+    } catch { return $true }
+}
+
 try {
     switch ($Mode) {
         'detect' {
@@ -140,8 +181,19 @@ try {
                 }
                 $f = if ($File) { $File } else { Get-LatestAsset $Sources.rainmeter[0] $Sources.rainmeter[1] }
                 Log "Installiere $f"
-                # Rainmeter installiert nach Programme und braucht dafuer Adminrechte (UAC-Abfrage)
-                $p = Start-Process $f -ArgumentList '/S', '/AUTOSTARTUP=1', '/RESTART=0' -Verb RunAs -Wait -PassThru
+                # Rainmeter installiert nach Programme und braucht dafuer Adminrechte (eine UAC-Abfrage).
+                # Das Rainmeter-Setup startet Rainmeter danach selbst - MIT Adminrechten. Befehle von normalen
+                # Programmen (unser "Liste aktivieren") blockiert Windows dann. Darum in derselben Admin-Sitzung
+                # wieder beenden; 'apply' startet es danach ganz normal.
+                $wrap = Join-Path $env:TEMP 'ObsidianTodo-rainmeter-install.ps1'
+                $fq = $f.Replace("'", "''")
+                Set-Content -LiteralPath $wrap -Encoding UTF8 -Value @"
+`$p = Start-Process '$fq' -ArgumentList '/S', '/AUTOSTARTUP=1' -Wait -PassThru
+for (`$i = 0; `$i -lt 10; `$i++) { Start-Sleep -Seconds 1; Get-Process Rainmeter -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue }
+exit `$p.ExitCode
+"@
+                $p = Start-Process powershell.exe -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', "`"$wrap`"" -Verb RunAs -Wait -PassThru
+                Remove-Item -LiteralPath $wrap -Force -ErrorAction SilentlyContinue
                 if ($p.ExitCode -ne 0) { throw "Rainmeter-Setup Exitcode $($p.ExitCode)" }
             } elseif ($What -eq 'obsidian') {
                 $f = if ($File) { $File } else { Get-LatestAsset $Sources.obsidian[0] $Sources.obsidian[1] }
@@ -243,33 +295,54 @@ try {
             Set-ItemProperty $cmdKey -Name 'URL Protocol' -Value ''
             Set-ItemProperty "$cmdKey\shell\open\command" -Name '(default)' -Value "wscript.exe `"$res\toast-action.vbs`" `"%1`" `"$RainmeterExe`""
 
-            # Rainmeter starten bzw. Skin neu laden und aktivieren
-            if (-not (Get-Process Rainmeter -ErrorAction SilentlyContinue)) {
-                Start-Process $RainmeterExe
-                for ($i = 0; $i -lt 30 -and -not (Get-Process Rainmeter -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 500 }
-                Start-Sleep -Seconds 3
-            }
-            # schon mal eingerichtet? Dann bleibt die Position, die der Nutzer gewaehlt hat
+            # ---------- Liste in Rainmeter aktivieren ----------
+            # 1. In Rainmeters Einstellungsdatei als aktiv eintragen (Erstinstallation: mit Position oben rechts).
+            #    Das wirkt auch dann, wenn Befehle an Rainmeter nicht ankommen (z. B. Rainmeter laeuft mit Adminrechten).
+            # 2. Laeuft Rainmeter schon: zusaetzlich per Befehl aktivieren; sonst normal starten (laedt die Liste selbst).
+            # 3. Pruefen, ob das Fenster der Liste wirklich da ist.
             $rmInfo = Find-Rainmeter
-            $known = $rmInfo -and $rmInfo.Ini -and (Test-Path $rmInfo.Ini) -and
-                (Select-String -LiteralPath $rmInfo.Ini -Pattern "^\[$SkinName\]\s*$" -Quiet)
-            & $RainmeterExe '!RefreshApp'
-            Start-Sleep -Seconds 2
-            & $RainmeterExe '!ActivateConfig' $SkinName 'Todo.ini'
+            $ini = if ($rmInfo -and $rmInfo.Ini) { $rmInfo.Ini } else { Join-Path $env:APPDATA 'Rainmeter\Rainmeter.ini' }
+            $known = (Test-Path -LiteralPath $ini) -and (Select-String -LiteralPath $ini -Pattern "^\[$SkinName\]\s*$" -Quiet)
+            $values = [ordered]@{ Active = '1' }
             if (-not $known) {
-                # Erstinstallation: oben rechts statt oben links ueber den Desktop-Symbolen, auf dem Desktop (unter den Fenstern)
-                Start-Sleep -Seconds 1
-                & $RainmeterExe '!ZPos' '-2' $SkinName
-                & $RainmeterExe '!Draggable' '1' $SkinName
-                # Bezugspunkt = rechte obere Ecke der Liste, damit sie bei groesserer Breite nach links waechst
-                # (ohne Anker landete sie mit der linken Kante am rechten Rand, also ausserhalb des Bildschirms)
                 Add-Type -AssemblyName System.Windows.Forms
                 $wa = [Windows.Forms.Screen]::PrimaryScreen.WorkingArea
-                & $RainmeterExe '!SetAnchor' '100%' '0' $SkinName
-                Start-Sleep -Milliseconds 500
-                & $RainmeterExe '!SetWindowPosition' "$($wa.Right - 24)" "$($wa.Top + 60)" '100%' '0' $SkinName
-                Log "Position: rechts oben bei $($wa.Right - 24),$($wa.Top + 60)"
+                # Bezugspunkt rechte obere Ecke: die Liste waechst bei groesserer Breite nach links
+                $values.WindowX = "$($wa.Right - 24)"; $values.WindowY = "$($wa.Top + 60)"
+                $values.AnchorX = '100%'; $values.AnchorY = '0'
+                $values.AlwaysOnTop = '-2'; $values.Draggable = '1'; $values.SavePosition = '1'; $values.KeepOnScreen = '1'
             }
+            $running = [bool](Get-Process Rainmeter -ErrorAction SilentlyContinue)
+            if (-not $running) { Set-IniSection $ini $SkinName $values; Log "In Rainmeter.ini eingetragen: $ini" }
+
+            if ($running) {
+                & $RainmeterExe '!RefreshApp'
+                Start-Sleep -Seconds 2
+                & $RainmeterExe '!ActivateConfig' $SkinName 'Todo.ini'
+                if (-not $known) {
+                    Start-Sleep -Seconds 1
+                    & $RainmeterExe '!ZPos' '-2' $SkinName
+                    & $RainmeterExe '!Draggable' '1' $SkinName
+                    & $RainmeterExe '!SetAnchor' '100%' '0' $SkinName
+                    Start-Sleep -Milliseconds 500
+                    & $RainmeterExe '!SetWindowPosition' $values.WindowX $values.WindowY '100%' '0' $SkinName
+                }
+            } else {
+                Start-Process $RainmeterExe
+            }
+
+            # Pruefen: ist das Fenster der Liste da? Sonst Rainmeter normal neu starten (Eintrag in der .ini wirkt dann)
+            $ok = $false
+            for ($i = 0; $i -lt 20 -and -not $ok; $i++) { Start-Sleep -Milliseconds 500; $ok = Test-SkinWindow }
+            if (-not $ok) {
+                Log 'Liste nach dem Aktivieren nicht sichtbar - Rainmeter wird neu gestartet'
+                Get-Process Rainmeter -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds 2
+                Set-IniSection $ini $SkinName $values
+                Start-Process $RainmeterExe
+                for ($i = 0; $i -lt 30 -and -not $ok; $i++) { Start-Sleep -Milliseconds 500; $ok = Test-SkinWindow }
+            }
+            Log "Liste sichtbar: $ok"
             Log "Fertig: $todo"
         }
 

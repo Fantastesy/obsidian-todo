@@ -43,8 +43,35 @@ class TodoHotkey : Form
         base.WndProc(ref m);
     }
 
+    // ---------- Pruefung fuer den Installer: TodoHotkey.exe --check "<Fensterende>" ----------
+    // Exitcode 0, wenn ein sichtbares Fenster existiert, dessen Titel so endet (Rainmeter benennt
+    // Skin-Fenster nach dem Pfad der .ini), sonst 1. So muss der Installer nichts zur Laufzeit uebersetzen.
+    delegate bool EnumProc(IntPtr h, IntPtr p);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc e, IntPtr p);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+
+    static int CheckWindow(string end)
+    {
+        bool found = false;
+        EnumWindows(delegate (IntPtr h, IntPtr p) {
+            var sb = new System.Text.StringBuilder(512);
+            GetWindowText(h, sb, 512);
+            if (IsWindowVisible(h) && sb.ToString().EndsWith(end, StringComparison.OrdinalIgnoreCase)) found = true;
+            return true;
+        }, IntPtr.Zero);
+        return found ? 0 : 1;
+    }
+
     [STAThread]
-    static void Main(string[] args)
+    static int Main(string[] args)
+    {
+        if (args.Length >= 2 && args[0] == "--check") return CheckWindow(args[1]);
+        Run(args);
+        return 0;
+    }
+
+    static void Run(string[] args)
     {
         bool first;
         using (new Mutex(true, "ObsidianTodoHotkey", out first))

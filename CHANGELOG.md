@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.1.1 – 2. November 2026
+
+### Windows
+- Hat das Setup Rainmeter erst mitinstalliert, wurde die Liste danach nicht eingeschaltet (das Rainmeter-Setup startet Rainmeter mit Adminrechten, Windows blockiert dann den Befehl zum Aktivieren). Die Liste wird jetzt fest in Rainmeters Einstellungen eingetragen, Rainmeter normal gestartet, und das Setup prüft am Ende, ob die Liste wirklich zu sehen ist.
+
+**Wer 1.1.0 schon installiert hat und die Liste nicht sieht:** Rechtsklick auf das Rainmeter-Symbol unten rechts → Skins → ObsidianTodo → Todo.ini. Das Update auf 1.1.1 kommt automatisch.
+
 ## 1.1.0 – 1. November 2026
 
 ### Windows
