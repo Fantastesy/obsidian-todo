@@ -18,6 +18,8 @@ local repeatIcon, timeIcon
 local notified, lastMinute = {}, nil
 -- Einblenden beim Anmelden/Aufwachen/Entsperren: bis revealUntil ueber allen Fenstern
 local revealUntil, lastTick = nil, os.time()
+-- Einblenden angefordert, bevor die Datei lesbar war (z. B. Cloud-Ordner direkt nach der Anmeldung)
+local pendingReveal
 
 local CHECK = '^%s*[-*+] %[([ xX])%] ?(.*)$'
 
@@ -639,6 +641,10 @@ function Update()
 	if now - lastTick > 90 then Reveal() end
 	lastTick = now
 	if revealUntil and now >= revealUntil then HideReveal() end
+	if pendingReveal then
+		if now - pendingReveal > 300 then pendingReveal = nil
+		elseif lastOpen then Reveal() end
+	end
 	-- jede Minute neu zeichnen, damit "heute 15:00" rechtzeitig rot wird
 	local minute = os.date('%H:%M')
 	refresh(minute ~= lastMinute)
@@ -977,7 +983,10 @@ end
 -- danach zurueck auf den Desktop. Aufgerufen per Aufgabenplanung (Anmelden/Entsperren) und aus Update().
 function Reveal()
 	if not lastOpen then refresh(true) end
-	if not lastOpen or lastOpen == 0 then return end
+	-- Datei noch nicht lesbar: merken und nachholen, sobald die Punkte da sind (hoechstens 5 Minuten)
+	if not lastOpen then pendingReveal = os.time() return end
+	if lastOpen == 0 then return end
+	pendingReveal = nil
 	revealUntil = os.time() + math.min(120, 10 * lastOpen)
 	SKIN:Bang('!ZPos', '2')
 	render(lastOpen, lastDone)

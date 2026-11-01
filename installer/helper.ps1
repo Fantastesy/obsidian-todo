@@ -192,7 +192,7 @@ try {
                 $user = "$env:USERDOMAIN\$env:USERNAME"
                 $act = New-ScheduledTaskAction -Execute $RainmeterExe -Argument '!CommandMeasure MeasureTodo "Reveal()" ObsidianTodo'
                 $tLogon = New-ScheduledTaskTrigger -AtLogOn -User $user
-                $tLogon.Delay = 'PT30S'
+                $tLogon.Delay = 'PT60S'
                 $cls = Get-CimClass -Namespace Root/Microsoft/Windows/TaskScheduler -ClassName MSFT_TaskSessionStateChangeTrigger
                 $tUnlock = New-CimInstance -CimClass $cls -ClientOnly -Property @{ StateChange = 8; UserId = $user; Delay = 'PT3S' }
                 $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 1)

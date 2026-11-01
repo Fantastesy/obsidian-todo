@@ -21,7 +21,7 @@ Start-Sleep -Seconds 15
 
 $rm = (Get-Process Rainmeter -ErrorAction SilentlyContinue | Select-Object -First 1).Path
 Shot 'nach-installation'
-Start-Sleep -Seconds 30   # Zeit zum Hinschauen: Liste oben rechts?
+Start-Sleep -Seconds 3
 # Rainmeter-Protokoll einschalten und neu starten
 $ini = "$env:APPDATA\Rainmeter\Rainmeter.ini"
 Stop-Process -Name Rainmeter -Force; Start-Sleep 2
