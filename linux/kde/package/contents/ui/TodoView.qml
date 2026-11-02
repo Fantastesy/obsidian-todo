@@ -173,12 +173,13 @@ Rectangle {
             RowLayout {
                 Layout.fillWidth: true
                 Layout.topMargin: Kirigami.Units.smallSpacing
-                PC3.Label {
+                // als Knopf wie Zahnrad und Pfeil
+                Chip {
+                    iconButton: true
                     text: "+ Neuer Punkt"
-                    color: P.accent(Plasmoid.configuration.accent)
-                    font.bold: true
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
-                    TapHandler { onTapped: view.app.openForm(null) }
+                    textColor: P.accent(Plasmoid.configuration.accent)
+                    bold: true
+                    onClicked: view.app.openForm(null)
                 }
                 Item { Layout.fillWidth: true }
                 PC3.Label {

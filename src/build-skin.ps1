@@ -86,6 +86,7 @@ Opacity=218
 ColorBtnFill=22,22,30,235
 ColorBtnHover=48,48,62,245
 ColorBtnStroke=255,255,255,48
+AddW=130
 RowH=36
 NoteH=30
 ListTop=62
@@ -463,20 +464,28 @@ AntiAlias=1
 Text=
 LeftMouseUpAction=$obs
 
+; "+ Neuer Punkt" als Knopf wie Zahnrad/Pfeil: Flaeche (Breite AddW setzt todo.lua nach der Textbreite) + Text
+[AddBtn]
+Meter=Shape
+DynamicVariables=1
+X=12
+Y=0
+Shape=Rectangle 0.5,0.5,#AddW#,31,7 | StrokeWidth 1 | Stroke Color #ColorBtnStroke# | Fill Color #ColorBtnFill#
+MouseOverAction=[!SetOption AddBtn Shape "Rectangle 0.5,0.5,#AddW#,31,7 | StrokeWidth 1 | Stroke Color #ColorBtnStroke# | Fill Color #ColorBtnHover#"][!UpdateMeter AddBtn][!Redraw]
+MouseLeaveAction=[!SetOption AddBtn Shape "Rectangle 0.5,0.5,#AddW#,31,7 | StrokeWidth 1 | Stroke Color #ColorBtnStroke# | Fill Color #ColorBtnFill#"][!UpdateMeter AddBtn][!Redraw]
+LeftMouseUpAction=[!CommandMeasure MeasureTodo "OpenDialog(0)"]
+
 [MeterAdd]
 Meter=String
 DynamicVariables=1
-X=20
+X=24
 Y=0
-H=#RowH#
 FontFace=#FontFace#
 FontSize=#FontSize#
-FontWeight=500
+FontWeight=600
 FontColor=#ColorAccent#
-SolidColor=0,0,0,1
 AntiAlias=1
 Text=+ Neuer Punkt
-LeftMouseUpAction=[!CommandMeasure MeasureTodo "OpenDialog(0)"]
 
 [MeterClean]
 Meter=String
@@ -495,7 +504,7 @@ Text=Erledigte archivieren
 LeftMouseUpAction=[!CommandMeasure MeasureTodo "Cleanup()"]
 "@
 
-$ini = [regex]::Replace($ini, '(?m)^(\[(?!Rainmeter\]|Metadata\]|Variables\]|Measure|MeterBg\]|MeterTitle\]|MeterCount\]|MeterFold\]|MeterHelp\])[^\]]+\]\n)', '$1Group=List'+"`n")
+$ini = [regex]::Replace($ini, '(?m)^(\[(?!Rainmeter\]|Metadata\]|Variables\]|Measure|MeterBg\]|MeterTitle\]|MeterCount\]|MeterFold\]|MeterHelp\]|GearBtn\]|FoldBtn\])[^\]]+\]\r?\n)', '$1Group=List'+"`r`n")
 [IO.File]::WriteAllText("$skin\Todo.ini", $ini, [Text.Encoding]::Unicode)
 
 # ---------- Formular: eigene Config ObsidianTodo\Formular (neuer Punkt / bearbeiten), Logik in form.lua ----------

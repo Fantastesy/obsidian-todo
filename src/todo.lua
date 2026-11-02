@@ -414,6 +414,7 @@ local function render(openCount, doneCount)
 		return
 	end
 	SKIN:Bang('!ShowMeter', 'MeterAdd')
+	SKIN:Bang('!ShowMeter', 'AddBtn')
 	local v = {
 		boxOpen = SKIN:GetVariable('BoxOpen'), boxDone = SKIN:GetVariable('BoxDone'),
 		colText = SKIN:GetVariable('ColorText'), colDone = SKIN:GetVariable('ColorDone'), repIcon = SKIN:GetVariable('RepIcon'),
@@ -523,10 +524,16 @@ local function render(openCount, doneCount)
 	end
 
 	y = y + 6
-	SKIN:Bang('!SetOption', 'MeterAdd', 'Y', y)
-	SKIN:Bang('!SetOption', 'MeterClean', 'Y', y)
+	-- Knopf "+ Neuer Punkt": so breit wie der Text, Text mittig in der Hoehe
+	local addW = 130
+	local ma = SKIN:GetMeter('MeterAdd')
+	if ma and ma:GetW() > 0 then addW = ma:GetW() + 23 end
+	SKIN:Bang('!SetVariable', 'AddW', addW)
+	SKIN:Bang('!SetOption', 'AddBtn', 'Y', y)
+	SKIN:Bang('!SetOption', 'MeterAdd', 'Y', y + math.floor((32 - (ma and ma:GetH() or 22)) / 2))
+	SKIN:Bang('!SetOption', 'MeterClean', 'Y', y + 7)
 	if doneCount > 0 then SKIN:Bang('!ShowMeter', 'MeterClean') else SKIN:Bang('!HideMeter', 'MeterClean') end
-	y = y + rowH + 10
+	y = y + math.max(rowH, 32) + 16
 
 	-- Seitenleiste: Hintergrund ueber die ganze Bildschirmhoehe (oben und unten je 8 Pixel Abstand)
 	local bgH = y
