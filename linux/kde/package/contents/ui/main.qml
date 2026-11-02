@@ -544,6 +544,13 @@ PlasmoidItem {
                 else if (c === "hide") side.hide();
                 else if (c === "edge") side.edgeHit();
                 else if (c === "redge") side.debugEdge = !side.debugEdge;
+                else if (c === "add") root.saveForm("new", -1, "", { title: "Testpunkt", date: "", time: "15:00", rule: "", notes: ["https://kde.org"] });
+                else if (c === "toggle") root.toggle(root.rows[0].line, root.rows[0].orig);
+                else if (c === "cleanup") root.cleanup();
+                else if (c === "form") root.openForm(null);
+                else if (c === "editform") root.openForm(root.rows[0]);
+                else if (c === "closeform") form.visible = false;
+                else if (c === "notes") root.toggleNotes(root.rows[0].key);
                 else if (c === "settings") root.openSettings();
                 else if (c === "closesettings") settings.visible = false;
                 else if (c === "reveal") root.reveal();

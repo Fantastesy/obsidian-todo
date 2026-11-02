@@ -11,7 +11,8 @@ import org.kde.kirigami as Kirigami
 import "../code/todo.js" as Core
 import "../code/palette.js" as P
 
-PlasmaCore.Dialog {
+// normales randloses Fenster (kein Plasma-Dialog): nur so laesst KDE es an der Titelzeile verschieben
+Window {
     id: dlg
     property var app
 
@@ -43,11 +44,11 @@ PlasmaCore.Dialog {
     readonly property var unit1: ["täglich", "wöchentlich", "monatlich", "jährlich"]
     readonly property var wds: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 
-    location: PlasmaCore.Types.Floating
-    type: PlasmaCore.Dialog.Normal
-    flags: Qt.WindowStaysOnTopHint
-    hideOnWindowDeactivate: false
-    backgroundHints: PlasmaCore.Types.NoBackground
+    title: "Obsidian Todo"
+    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
+    color: "transparent"
+    width: panel.implicitWidth
+    height: panel.implicitHeight
 
     // ---------- Oeffnen ----------
     function reset() {
@@ -74,9 +75,7 @@ PlasmaCore.Dialog {
         var d = Core.fromIso(date) || Core.today();
         calYear = d.getFullYear(); calMonth = d.getMonth();
         visible = true;
-        // mittig auf dem Bildschirm, auf dem das Fenster erscheint (nicht ueber alle Monitore)
-        x = Screen.virtualX + Math.round((Screen.width - width) / 2);
-        y = Screen.virtualY + Math.round((Screen.height - height) / 3);
+        raise();
         requestActivate();
         titleField.forceActiveFocus();
     }
@@ -128,8 +127,9 @@ PlasmaCore.Dialog {
         visible = false;
     }
 
-    mainItem: Rectangle {
+    Rectangle {
         id: panel
+        anchors.fill: parent
         color: P.formBg
         radius: Kirigami.Units.gridUnit * 0.75
         Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
@@ -180,14 +180,18 @@ PlasmaCore.Dialog {
             RowLayout {
                 Layout.fillWidth: true
                 // an der Titelzeile ziehen = Fenster verschieben (KDE uebernimmt das Ziehen)
-                DragHandler { target: null; onActiveChanged: if (active) dlg.startSystemMove() }
-                HoverHandler { cursorShape: Qt.SizeAllCursor }
                 PC3.Label {
                     text: dlg.mode === "edit" ? "Punkt bearbeiten" : "Neuer Punkt"
                     color: P.text
                     font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.45
                     font.bold: true
                     Layout.fillWidth: true
+                    // Titelzeile ziehen = Fenster verschieben
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.SizeAllCursor
+                        onPressed: dlg.startSystemMove()
+                    }
                 }
                 Chip { flat: true; iconName: "window-close"; textColor: P.done; onClicked: dlg.visible = false }
             }
