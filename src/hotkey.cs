@@ -20,13 +20,58 @@ class TodoHotkey : Form
     readonly string rainmeter;
     public string Combo;
 
-    TodoHotkey(string rainmeter)
+    // Waehlbare Kuerzel (Einstellungen-Fenster schreibt "Hotkey=<schluessel>" in prefs.inc)
+    static readonly string[][] Choices = {
+        new[] { "ctrl+alt+t", "Strg+Alt+T" },
+        new[] { "win+shift+t", "Win+Shift+T" },
+        new[] { "ctrl+shift+space", "Strg+Shift+Leertaste" },
+        new[] { "ctrl+alt+n", "Strg+Alt+N" },
+    };
+
+    bool TryRegister(string key)
+    {
+        uint mod = MOD_NOREPEAT; uint vk = 0;
+        foreach (var part in key.Split('+'))
+        {
+            switch (part)
+            {
+                case "ctrl": mod |= MOD_CONTROL; break;
+                case "alt": mod |= MOD_ALT; break;
+                case "shift": mod |= MOD_SHIFT; break;
+                case "win": mod |= MOD_WIN; break;
+                case "space": vk = (uint)Keys.Space; break;
+                default: vk = (uint)(Keys)Enum.Parse(typeof(Keys), part.ToUpperInvariant()); break;
+            }
+        }
+        return RegisterHotKey(Handle, 1, mod, vk);
+    }
+
+    TodoHotkey(string rainmeter, string wish)
     {
         this.rainmeter = rainmeter;
         ShowInTaskbar = false;
         CreateHandle();
-        if (RegisterHotKey(Handle, 1, MOD_WIN | MOD_SHIFT | MOD_NOREPEAT, (uint)Keys.T)) Combo = "Win+Shift+T";
-        else if (RegisterHotKey(Handle, 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (uint)Keys.T)) Combo = "Strg+Alt+T";
+        if (wish == "aus") { Combo = "aus"; return; }
+        // gewuenschtes Kuerzel; ohne Wunsch (oder belegt) wie bisher: Win+Shift+T, sonst Strg+Alt+T
+        foreach (var c in Choices)
+            if (c[0] == wish && TryRegister(c[0])) { Combo = c[1]; return; }
+        if (TryRegister("win+shift+t")) Combo = "Win+Shift+T";
+        else if (TryRegister("ctrl+alt+t")) Combo = "Strg+Alt+T";
+    }
+
+    // "Hotkey=..." aus prefs.inc (UTF-16) lesen
+    static string ReadWish(string dir)
+    {
+        try
+        {
+            foreach (var line in File.ReadAllLines(Path.Combine(dir, "prefs.inc")))
+            {
+                var l = line.Trim();
+                if (l.StartsWith("Hotkey=", StringComparison.OrdinalIgnoreCase)) return l.Substring(7).Trim().ToLowerInvariant();
+            }
+        }
+        catch { }
+        return "";
     }
 
     // Fenster nie anzeigen
@@ -82,10 +127,12 @@ class TodoHotkey : Form
             string rm = args.Length > 0 && File.Exists(args[0])
                 ? args[0]
                 : Path.GetFullPath(Path.Combine(dir, @"..\..\..\Rainmeter.exe"));
-            var f = new TodoHotkey(rm);
-            // gewaehltes Kuerzel fuer Hilfe/Doku festhalten
+            var f = new TodoHotkey(rm, ReadWish(dir));
+            // gewaehltes Kuerzel fuer Hilfe/Einstellungen festhalten
             File.WriteAllText(Path.Combine(dir, "hotkey.txt"), f.Combo ?? "keins frei");
-            if (f.Combo == null) return;
+            // fuer das Einstellungen-Fenster (hebt das aktive Kuerzel hervor)
+            File.WriteAllText(Path.Combine(dir, "hotkey.inc"), "[Variables]\r\nHotkeyNow=" + (f.Combo ?? "keins frei") + "\r\n", System.Text.Encoding.Unicode);
+            if (f.Combo == null || f.Combo == "aus") return;
             Application.Run(f);
         }
     }

@@ -27,7 +27,7 @@ New-Item -ItemType Directory -Force $res | Out-Null
 foreach ($f in 'todo.lua', 'form.lua', 'sidebar.lua') {
     [IO.File]::WriteAllText((Join-Path $res $f), [IO.File]::ReadAllText((Join-Path $src $f), [Text.Encoding]::UTF8), [Text.Encoding]::Unicode)
 }
-foreach ($f in 'notify.ps1', 'pick-file.ps1', 'update.ps1', 'toast-action.vbs') { Copy-Item (Join-Path $src $f) $res }
+foreach ($f in 'notify.ps1', 'pick-file.ps1', 'update.ps1', 'choose-todo.ps1', 'toast-action.vbs') { Copy-Item (Join-Path $src $f) $res }
 $ascii = New-Object Text.UTF8Encoding($false)
 [IO.File]::WriteAllText((Join-Path $res 'version.txt'), $version, $ascii)
 [IO.File]::WriteAllText((Join-Path $res 'repo.txt'), $Repo, $ascii)

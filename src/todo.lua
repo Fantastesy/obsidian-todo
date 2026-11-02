@@ -50,8 +50,12 @@ end
 -- wird hier mit ein- bzw. ausgeschaltet, damit es auch nach Updates ohne Installer-Zutun stimmt.
 local RAND = 'ObsidianTodo\\Rand'
 local mode, workH
+local panel = false              -- 'both': gerade als Panel am Rand (sidebar.lua: PanelOn/PanelOff)
+local deskX, deskY               -- 'both': Desktop-Platz, an den die Liste danach zurueckkehrt
 local hideOnFirstUpdate = false
 function setupMode()
+	-- Hintergrund-Deckkraft aus den Einstellungen
+	SKIN:Bang('!SetVariable', 'ColorBg', '12,12,18,' .. (tonumber(SKIN:GetVariable('Opacity')) or 218))
 	mode = SKIN:GetVariable('Mode') or 'sidebar'
 	workH = tonumber(SKIN:GetVariable('WORKAREAHEIGHT')) or 1080
 	if mode == 'sidebar' then
@@ -62,6 +66,7 @@ function setupMode()
 		-- !Hide wirkt erst, wenn Rainmeter das Fenster angelegt hat -> im ersten Update
 		hideOnFirstUpdate = true
 	else
+		if mode == 'both' then SKIN:Bang('!SetAnchor', '0', '0') end
 		SKIN:Bang('!KeepOnScreen', '1')
 		SKIN:Bang('!Draggable', '1')
 		SKIN:Bang('!ZPos', '-2')
@@ -521,7 +526,7 @@ local function render(openCount, doneCount)
 
 	-- Seitenleiste: Hintergrund ueber die ganze Bildschirmhoehe (oben und unten je 8 Pixel Abstand)
 	local bgH = y
-	if mode == 'sidebar' then bgH = math.max(y, workH - 16) end
+	if mode == 'sidebar' or panel then bgH = math.max(y, workH - 16) end
 	SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0,0,' .. width .. ',' .. bgH .. ',12 | Fill Color #ColorBg# | StrokeWidth 0')
 	setCount(openCount)
 	SKIN:Bang('!UpdateMeter', '*')
@@ -656,6 +661,9 @@ end
 -- nach "In 15 Min nochmal" erneut). Jede Erinnerung bekommt eine Nummer fuer die Knoepfe (ToastAction).
 local reminderIds, reminderCount, snoozed = {}, 0, {}
 local function checkReminders()
+	-- Einstellungen: RemindOn (1/0), RemindLead (Minuten vorher)
+	if SKIN:GetVariable('RemindOn') == '0' then return end
+	local lead = tonumber(SKIN:GetVariable('RemindLead')) or 0
 	local due = {}
 	local now = os.date('*t')
 	for _, t in ipairs(display) do
@@ -663,7 +671,7 @@ local function checkReminders()
 		local day = dueOf(t.text)
 		local again = snoozed[t.text] and os.time() >= snoozed[t.text]
 		if not t.done and h and day and (not notified[t.text] or again)
-			and (day < today() or (day == today() and now.hour * 60 + now.min >= h * 60 + mi)) then
+			and (day < today() or (day == today() and now.hour * 60 + now.min >= h * 60 + mi - lead)) then
 			notified[t.text] = true
 			snoozed[t.text] = nil
 			reminderCount = reminderCount + 1
@@ -1031,8 +1039,10 @@ function Reveal()
 	if not lastOpen then pendingReveal = os.time() return end
 	if lastOpen == 0 then return end
 	pendingReveal = nil
-	revealUntil = os.time() + math.min(120, 10 * lastOpen)
-	if mode == 'sidebar' then
+	local per = tonumber(SKIN:GetVariable('RevealPerItem')) or 10
+	if per <= 0 then return end
+	revealUntil = os.time() + math.min(120, per * lastOpen)
+	if mode ~= 'desktop' then
 		SKIN:Bang('!CommandMeasure', 'MeasureSide', 'Reveal()', RAND)
 	else
 		SKIN:Bang('!ZPos', '2')
@@ -1044,10 +1054,32 @@ end
 function HideReveal(button)
 	if not revealUntil then return end
 	revealUntil = nil
-	if mode == 'sidebar' then
+	if mode ~= 'desktop' then
 		SKIN:Bang('!CommandMeasure', 'MeasureSide', button and 'Out()' or 'RevealEnd()', RAND)
 	else
 		SKIN:Bang('!ZPos', '-2')
 	end
 	render(lastOpen, lastDone)
+end
+
+-- 'both': vom Desktop-Platz zum bildschirmhohen Panel am Rand und zurueck (aufgerufen von sidebar.lua)
+function PanelOn()
+	if panel then return end
+	panel = true
+	deskX, deskY = SKIN:GetX(), SKIN:GetY()
+	SKIN:Bang('!Hide')
+	SKIN:Bang('!KeepOnScreen', '0')
+	SKIN:Bang('!Draggable', '0')
+	if lastOpen then render(lastOpen, lastDone) end
+end
+function PanelOff()
+	if not panel then return end
+	panel = false
+	SKIN:Bang('!Hide')
+	SKIN:Bang('!ZPos', '-2')
+	if deskX then SKIN:Bang('!Move', deskX, deskY) end
+	SKIN:Bang('!KeepOnScreen', '1')
+	SKIN:Bang('!Draggable', '1')
+	if lastOpen then render(lastOpen, lastDone) end
+	SKIN:Bang('!Show')
 end

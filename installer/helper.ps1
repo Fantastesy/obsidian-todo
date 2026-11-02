@@ -229,6 +229,9 @@ exit `$p.ExitCode
 
             # Todo-Dateien nur anlegen, wenn es sie noch nicht gibt
             $todo = Join-Path $TodoDir 'Todo.md'
+            # im Einstellungen-Fenster gewaehlte Datei mit anderem Namen (choose-todo.ps1) behalten
+            $chosen = (Get-ItemProperty 'HKCU:\Software\ObsidianTodo' -Name TodoFile -ErrorAction SilentlyContinue).TodoFile
+            if ($chosen -and ((Split-Path $chosen) -eq $TodoDir.TrimEnd('\'))) { $todo = $chosen }
             $archive = Join-Path $TodoDir 'Todo-Archiv.md'
             $utf8 = New-Object Text.UTF8Encoding($false)
             if (-not (Test-Path -LiteralPath $todo)) { [IO.File]::WriteAllText($todo, "# Todo`n`n- [ ] Mein erster Punkt`n", $utf8) }
@@ -241,6 +244,8 @@ exit `$p.ExitCode
             # eigene Einstellungen (Breite) - nur anlegen, nie ueberschreiben
             $prefs = Join-Path $res 'prefs.inc'
             if (-not (Test-Path -LiteralPath $prefs)) { [IO.File]::WriteAllText($prefs, "[Variables]`r`n", [Text.Encoding]::Unicode) }
+            $colors = Join-Path $res 'colors.inc'
+            if (-not (Test-Path -LiteralPath $colors)) { [IO.File]::WriteAllText($colors, "[Variables]`r`n", [Text.Encoding]::Unicode) }
 
             # Einblenden beim Anmelden und Entsperren: Aufgabe ruft Reveal() in der Liste auf
             # (Aufwachen aus dem Standby erkennt die Liste selbst an der Zeitluecke)

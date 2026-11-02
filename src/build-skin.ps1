@@ -50,11 +50,19 @@ MaxItems=15
 MaxNotes=30
 MaxSubs=30
 Width=460
-; Anzeige: sidebar (Seitenleiste am rechten Rand) | desktop | both
+; Einstellungen (Standardwerte; prefs.inc/colors.inc am Ende ueberschreiben sie):
+; Anzeige sidebar|desktop|both, Seite right|left, Tempo fast|normal|slow, Einblenden Sekunden pro Punkt (0 = aus)
 Mode=sidebar
 LastMode=
-; eigene Einstellungen (Anzeige, Breite), schreibt das Einstellungen-Fenster; bleiben bei Updates erhalten
-@IncludePrefs=#@#prefs.inc
+Side=right
+Speed=normal
+RevealPerItem=10
+RemindOn=1
+RemindLead=0
+AutoUpdate=1
+Hotkey=
+Accent=lila
+Opacity=218
 RowH=36
 NoteH=30
 ListTop=62
@@ -93,6 +101,9 @@ EditText=
 EditX=12
 EditY=0
 EditW=400
+; eigene Einstellungen (schreibt das Einstellungen-Fenster; bleiben bei Updates erhalten) - zuletzt, damit sie gewinnen
+@IncludePrefs=#@#prefs.inc
+@IncludeColors=#@#colors.inc
 
 [MeasureTodo]
 Measure=Script
@@ -550,6 +561,8 @@ InW=480
 InH=34
 InSize=12
 InStyle=Normal
+; Akzentfarbe aus dem Einstellungen-Fenster
+@IncludeColors=#@#colors.inc
 
 [MeasureInput]
 Measure=Plugin
@@ -1008,17 +1021,19 @@ $helpLines = @(
     '#So funktioniert''s'
     'Klick: Punkt abhaken (nochmal klicken = rückgängig)'
     'Rechtsklick: Punkt bearbeiten oder löschen'
-    '+ Neuer Punkt: neuen Punkt anlegen, überall auch mit Strg+Alt+T'
+    '+ Neuer Punkt: neuen Punkt anlegen, überall auch mit dem Tastenkürzel (siehe oben)'
     'Enter: speichert den Punkt sofort (Datum vorher wählen oder später ergänzen)'
     'Titel „Todo“: Liste in Obsidian öffnen'
-    'Seitenleiste: Maus an den rechten Bildschirmrand – die Liste fährt herein'
-    'Anmelden, Aufwachen, Entsperren: die Liste kommt kurz von selbst (10 Sekunden pro offenem Punkt)'
+    'Seitenleiste: Maus an den Bildschirmrand – die Liste fährt herein'
+    'Anmelden, Aufwachen, Entsperren: die Liste kommt kurz von selbst'
     'Farben: orange = heute fällig, rot = überfällig'
     'Erledigte archivieren: abgehakte Punkte wandern ins Archiv'
 )
-$hw = 600
+# ---------- Einstellungen-Fenster: Config ObsidianTodo\Einstellungen, zwei Spalten ----------
+$hw = 960                       # Fensterbreite
+$colL = 22; $colR = 500; $colW = 438
 $archive = '["obsidian://open?path=#ArchiveUrl#"]'
-function SetChip($name, $x, $y, $text, $action) {
+function SetChip($name, $x, $y, $text, $action, $color = '#ColorNote#', $size = 11) {
 @"
 [$name]
 Meter=String
@@ -1026,9 +1041,9 @@ X=$x
 Y=$y
 Padding=14,6,14,6
 FontFace=#FontFace#
-FontSize=11
+FontSize=$size
 FontWeight=600
-FontColor=#ColorNote#
+FontColor=$color
 SolidColor=255,255,255,16
 AntiAlias=1
 Text=$text
@@ -1037,12 +1052,12 @@ LeftMouseUpAction=$action
 
 "@
 }
-function Caption($name, $text) {
+function Caption($name, $text, $x = 22, $y = '22R') {
 @"
 [$name]
 Meter=String
-X=22
-Y=22R
+X=$x
+Y=$y
 FontFace=#FontFace#
 FontSize=13
 FontWeight=700
@@ -1053,7 +1068,48 @@ Text=$text
 
 "@
 }
-$sel = '[!SetOption {0} SolidColor "138,108,245,255"][!SetOption {0} FontColor "#ColorText#"]'
+function Small($name, $text, $x, $y = '8R') {
+@"
+[$name]
+Meter=String
+X=$x
+Y=$y
+W=$colW
+ClipString=2
+FontFace=#FontFace#
+FontSize=10
+FontColor=#ColorDone#
+AntiAlias=1
+Text=$text
+
+
+"@
+}
+# ausgewaehlter Knopf in der Akzentfarbe
+$sel = '[!SetOption {0} SolidColor "#ColorCheck#"][!SetOption {0} FontColor "#ColorText#"]'
+# Wert in prefs.inc / colors.inc schreiben
+function P($k, $v) { "[!WriteKeyValue Variables $k `"$v`" `"#@#prefs.inc`"]" }
+function C($k, $v) { "[!WriteKeyValue Variables $k `"$v`" `"#@#colors.inc`"]" }
+$refAll = '[!Refresh ObsidianTodo][!Refresh ObsidianTodo\Rand][!Refresh ObsidianTodo\Formular][!Refresh]'
+# Eine Einstellung: Ueberschrift + Knoepfe in einer Reihe. Ein String-Measure vergleicht den aktuellen Wert
+# ($current) mit dem Muster jedes Knopfs und hebt den passenden hervor.
+# $opts: @( @(Beschriftung, Muster, Bangs [, Schriftfarbe, Schriftgroesse]), ... )
+function Row($key, $caption, $x, $y, $current, $opts) {
+    $s = Caption "Cap$key" $caption $x $y
+    $m = "[Sel$key]`r`nMeasure=String`r`nString=$current`r`n"
+    $cx = $x; $cy = '10R'; $i = 0
+    foreach ($o in $opts) {
+        $i++
+        $color = if ($o.Count -gt 3) { $o[3] } else { '#ColorNote#' }
+        $size = if ($o.Count -gt 4) { $o[4] } else { 11 }
+        $s += SetChip "$key$i" $cx $cy $o[0] $o[2] $color $size
+        $n = if ($i -eq 1) { '' } else { "$i" }
+        $m += "IfMatch$n=$($o[1])`r`nIfMatchAction$n=$($sel -f "$key$i")`r`n"
+        $cx = '8R'; $cy = 'r'
+    }
+    $s + $m + "`r`n"
+}
+
 $hini = @"
 ; Einstellungen der Obsidian-Todo-Liste. Erzeugt von build-skin.ps1 - Aenderungen dort machen.
 [Rainmeter]
@@ -1065,10 +1121,22 @@ OnRefreshAction=[!ZPos 2][!SetWindowPosition "50%" "50%" "50%" "50%"]
 
 [Variables]
 ArchiveUrl=
+TodoFile=
 @IncludeSettings=#@#settings.inc
 Width=460
 Mode=sidebar
+Side=right
+Speed=normal
+FontSize=13
+Opacity=218
+RevealPerItem=10
+RemindOn=1
+RemindLead=0
+AutoUpdate=1
+HotkeyNow=
+Accent=lila
 @IncludePrefs=#@#prefs.inc
+@IncludeHotkey=#@#hotkey.inc
 FontFace=Segoe UI
 IconFace=Segoe Fluent Icons
 ColorBg=12,12,18,235
@@ -1076,28 +1144,29 @@ ColorText=255,255,255,255
 ColorNote=200,200,212,255
 ColorDone=175,175,188,240
 ColorAccent=165,185,255,255
+ColorCheck=138,108,245,255
 ColorHover=255,255,255,22
+@IncludeColors=#@#colors.inc
 
-; ausgewaehlte Knoepfe lila
-[MeasureMode]
-Measure=String
-String=#Mode#
-IfMatch=^sidebar$
-IfMatchAction=$($sel -f 'Mode1')
-IfMatch2=^desktop$
-IfMatchAction2=$($sel -f 'Mode2')
-IfMatch3=^both$
-IfMatchAction3=$($sel -f 'Mode3')
+; Tastenkuerzel neu setzen: TodoHotkey.exe beenden, die Liste startet es beim Auffrischen neu
+[MeasureKillHotkey]
+Measure=Plugin
+Plugin=RunCommand
+Program=taskkill.exe
+Parameter=/f /im TodoHotkey.exe
+State=Hide
+FinishAction=[!Refresh ObsidianTodo][!Delay 1500][!Refresh]
 
-[MeasureWidth]
-Measure=Calc
-Formula=#Width#
-IfCondition=MeasureWidth < 420
-IfTrueAction=$($sel -f 'Width1')
-IfCondition2=(MeasureWidth >= 420) && (MeasureWidth < 520)
-IfTrueAction2=$($sel -f 'Width2')
-IfCondition3=MeasureWidth >= 520
-IfTrueAction3=$($sel -f 'Width3')
+; Todo-Datei waehlen (Dateidialog, schreibt settings.inc)
+[MeasureChoose]
+Measure=Plugin
+Plugin=RunCommand
+Program=powershell.exe
+Parameter=-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File "#@#choose-todo.ps1"
+State=Hide
+OutputType=UTF8
+Timeout=-1
+FinishAction=[!Refresh ObsidianTodo][!Refresh ObsidianTodo\Formular][!Refresh]
 
 [MeterBg]
 Meter=Shape
@@ -1134,38 +1203,83 @@ MouseLeaveAction=[!SetOption MeterClose SolidColor "0,0,0,1"][!UpdateMeter Meter
 
 
 "@
-$hini += (Caption 'CapMode' 'Anzeige').Replace('Y=22R', 'Y=62')
-$modes = @(@('Mode1', 'Seitenleiste', 'sidebar'), @('Mode2', 'Desktop', 'desktop'), @('Mode3', 'Beides', 'both'))
-$x = '22'; $y = '10R'
-foreach ($m in $modes) {
-    $hini += SetChip $m[0] $x $y $m[1] "[!WriteKeyValue Variables Mode $($m[2]) `"#@#prefs.inc`"][!Refresh ObsidianTodo][!Refresh]"
-    $x = '8R'; $y = 'r'
-}
-$hini += @"
-[ModeInfo]
-Meter=String
-X=22
-Y=8R
-W=($hw-44)
-ClipString=2
-FontFace=#FontFace#
-FontSize=10
-FontColor=#ColorDone#
-AntiAlias=1
-Text=Seitenleiste: unsichtbar, fährt am rechten Bildschirmrand herein. Desktop: liegt auf dem Hintergrund. Beides: liegt auf dem Desktop und kommt am Rand nach vorne.
 
-
-"@
-$hini += Caption 'CapWidth' 'Breite'
-$x = '22'; $y = '10R'
-foreach ($w in @(@('Width1', 'Schmal', 380), @('Width2', 'Normal', 460), @('Width3', 'Breit', 560))) {
-    $hini += SetChip $w[0] $x $y $w[1] "[!WriteKeyValue Variables Width $($w[2]) `"#@#prefs.inc`"][!Refresh ObsidianTodo][!Refresh ObsidianTodo\Rand][!Refresh]"
-    $x = '8R'; $y = 'r'
+# ----- linke Spalte: Aussehen -----
+$hini += Row 'Mode' 'Anzeige' $colL 62 '#Mode#' @(
+    @('Seitenleiste', '^sidebar$', "$(P Mode sidebar)$refAll"),
+    @('Desktop', '^desktop$', "$(P Mode desktop)$refAll"),
+    @('Beides', '^both$', "$(P Mode both)$refAll"))
+$hini += Small 'ModeInfo' 'Seitenleiste: fährt am Bildschirmrand herein. Desktop: liegt auf dem Hintergrund. Beides: liegt auf dem Desktop und fährt am Rand als Seitenleiste herein.' $colL
+$hini += Row 'Side' 'Seite' $colL '22R' '#Side#' @(
+    @('Rechts', '^right$', "$(P Side right)$refAll"),
+    @('Links', '^left$', "$(P Side left)$refAll"))
+$hini += Row 'Width' 'Breite' $colL '22R' '#Width#' @(
+    @('Schmal', '^380$', "$(P Width 380)$refAll"),
+    @('Normal', '^460$', "$(P Width 460)$refAll"),
+    @('Breit', '^560$', "$(P Width 560)$refAll"))
+$hini += Row 'Font' 'Schriftgröße' $colL '22R' '#FontSize#' @(
+    @('Klein', '^12$', "$(P FontSize 12)$(P RowH 32)$(P NoteH 28)$refAll"),
+    @('Normal', '^13$', "$(P FontSize 13)$(P RowH 36)$(P NoteH 30)$refAll"),
+    @('Groß', '^15$', "$(P FontSize 15)$(P RowH 40)$(P NoteH 34)$refAll"))
+# Akzentfarbe: Kaestchen, Knoepfe (ColorCheck) und Links/Ueberschriften (ColorAccent)
+$accents = @(
+    @('lila', '138,108,245,255', '165,185,255,255'),
+    @('blau', '60,130,240,255', '140,190,255,255'),
+    @('gruen', '50,170,100,255', '140,220,170,255'),
+    @('orange', '235,135,40,255', '255,195,130,255'),
+    @('rot', '220,70,70,255', '255,160,160,255'),
+    @('pink', '220,80,165,255', '255,165,215,255'))
+$opts = @()
+foreach ($a in $accents) {
+    $opts += , @([string][char]0x25CF, "^$($a[0])$", "$(C Accent $a[0])$(C ColorCheck $a[1])$(C ColorAccent $a[2])$refAll", $a[1], 17)
 }
+$hini += Row 'Accent' 'Akzentfarbe' $colL '22R' '#Accent#' $opts
+$hini += Row 'Opacity' 'Hintergrund' $colL '22R' '#Opacity#' @(
+    @('Durchsichtig', '^150$', "$(P Opacity 150)$refAll"),
+    @('Leicht', '^190$', "$(P Opacity 190)$refAll"),
+    @('Normal', '^218$', "$(P Opacity 218)$refAll"),
+    @('Deckend', '^250$', "$(P Opacity 250)$refAll"))
+$hini += "[LeftEnd]`r`nMeter=Image`r`nX=$colL`r`nY=0R`r`nW=1`r`nH=1`r`n`r`n"
+
+# ----- rechte Spalte: Verhalten -----
+$hini += Row 'Speed' 'Tempo der Seitenleiste' $colR 62 '#Speed#' @(
+    @('Schnell', '^fast$', "$(P Speed fast)$refAll"),
+    @('Normal', '^normal$', "$(P Speed normal)$refAll"),
+    @('Gemütlich', '^slow$', "$(P Speed slow)$refAll"))
+$hini += Row 'Reveal' 'Beim Anmelden/Aufwachen einblenden' $colR '22R' '#RevealPerItem#' @(
+    @('Aus', '^0$', "$(P RevealPerItem 0)$refAll"),
+    @('5 s', '^5$', "$(P RevealPerItem 5)$refAll"),
+    @('10 s', '^10$', "$(P RevealPerItem 10)$refAll"),
+    @('20 s', '^20$', "$(P RevealPerItem 20)$refAll"))
+$hini += Small 'RevealInfo' 'Sekunden pro offenem Punkt (höchstens 2 Minuten).' $colR
+$hini += Row 'Remind' 'Erinnerungen' $colR '22R' '#RemindOn#-#RemindLead#' @(
+    @('Aus', '^0-', "$(P RemindOn 0)$refAll"),
+    @('Pünktlich', '^1-0$', "$(P RemindOn 1)$(P RemindLead 0)$refAll"),
+    @('5 Min vorher', '^1-5$', "$(P RemindOn 1)$(P RemindLead 5)$refAll"),
+    @('15 Min vorher', '^1-15$', "$(P RemindOn 1)$(P RemindLead 15)$refAll"))
+$kill = '[!CommandMeasure MeasureKillHotkey "Run"]'
+$hini += Row 'Hotkey' 'Tastenkürzel für neuen Punkt' $colR '22R' '#HotkeyNow#' @(
+    @('Strg+Alt+T', '^Strg\+Alt\+T$', "$(P Hotkey ctrl+alt+t)$kill"),
+    @('Win+Shift+T', '^Win\+Shift\+T$', "$(P Hotkey win+shift+t)$kill"),
+    @('Strg+Shift+Leer', '^Strg\+Shift\+Leertaste$', "$(P Hotkey ctrl+shift+space)$kill"),
+    @('Aus', '^aus$', "$(P Hotkey aus)$kill"))
+$hini += Caption 'CapFile' 'Todo-Datei' $colR
+$hini += Small 'FileNow' '#TodoFile#' $colR
+$hini += SetChip 'File1' $colR '10R' 'Andere Datei wählen …' '[!CommandMeasure MeasureChoose "Run"]'
+$hini += Row 'Update' 'Automatische Updates' $colR '22R' '#AutoUpdate#' @(
+    @('An', '^1$', "$(P AutoUpdate 1)[!Refresh]"),
+    @('Aus', '^0$', "$(P AutoUpdate 0)[!Refresh]"))
+$hini += "[RightEnd]`r`nMeter=Image`r`nX=$colR`r`nY=0R`r`nW=1`r`nH=1`r`n`r`n"
+
+# ----- unten ueber die ganze Breite: Kurzhilfe, Archiv, Version -----
 $n = 0
 foreach ($l in $helpLines) {
     $n++
-    if ($l.StartsWith('#')) { $hini += Caption "Line$n" $l.Substring(1); continue }
+    if ($l.StartsWith('#')) {
+        # unter der laengeren Spalte beginnen
+        $hini += (Caption "Line$n" $l.Substring(1) 22 '(max([LeftEnd:Y],[RightEnd:Y])+30)').Replace("Text=", "DynamicVariables=1`r`nText=")
+        continue
+    }
     $hini += @"
 [Line$n]
 Meter=String

@@ -15,7 +15,10 @@ function Log($msg) {
 }
 
 try {
-    $repo = (Get-Content -LiteralPath (Join-Path $res 'repo.txt') -ErrorAction Stop | Select-Object -First 1).Trim()
+    # im Einstellungen-Fenster abschaltbar (prefs.inc: AutoUpdate=0); Standard: an
+    $prefs = Join-Path $res 'prefs.inc'
+    if ((Test-Path -LiteralPath $prefs) -and (Select-String -LiteralPath $prefs -Encoding Unicode -Pattern '^\s*AutoUpdate\s*=\s*0\s*$' -Quiet)) { exit 0 }
+    $repo =(Get-Content -LiteralPath (Join-Path $res 'repo.txt') -ErrorAction Stop | Select-Object -First 1).Trim()
     if ($repo -notmatch '^[\w.-]+/[\w.-]+$') { exit 0 }   # kein Repo eingetragen (Entwicklerversion)
     $current = [version](Get-Content -LiteralPath (Join-Path $res 'version.txt') | Select-Object -First 1).Trim()
 
