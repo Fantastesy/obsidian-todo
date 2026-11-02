@@ -443,10 +443,10 @@ local function render(openCount, doneCount)
 				SKIN:Bang('!SetOption', 'Progress' .. i, 'Text', subsDone .. '/' .. #t.subs)
 				SKIN:Bang('!SetOption', 'Progress' .. i, 'Y', y)
 				SKIN:Bang('!ShowMeter', 'Progress' .. i)
-				SKIN:Bang('!SetOption', m, 'W', width - 183)
+				SKIN:Bang('!SetOption', m, 'ClipStringW', width - 183)
 			else
 				SKIN:Bang('!HideMeter', 'Progress' .. i)
-				SKIN:Bang('!SetOption', m, 'W', width - 129)
+				SKIN:Bang('!SetOption', m, 'ClipStringW', width - 129)
 			end
 
 			SKIN:Bang('!SetOption', 'Clip' .. i, 'Text', clipIcon .. (count > 0 and (' ' .. count) or ''))
