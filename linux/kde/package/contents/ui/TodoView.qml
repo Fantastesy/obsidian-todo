@@ -12,6 +12,35 @@ Rectangle {
     // im Panel der Seitenleiste (SidePanel.qml): Maus rein/raus steuert das Hinausgleiten
     property bool inPanel: false
 
+    // Plasmas Halter des Widgets auf dem Desktop (ItemContainer)
+    function deskContainer() {
+        for (var p = view.parent; p; p = p.parent)
+            if (p.editModeCondition !== undefined && p.editMode !== undefined) return p;
+        return null;
+    }
+    property var box: null
+    property int savedCondition: -1
+    function setDirectMove(on) {
+        if (!box) box = deskContainer();
+        if (!box) return;
+        if (on) {
+            if (savedCondition < 0) savedCondition = box.editModeCondition;
+            box.editModeCondition = 3;          // ItemContainer.AfterPress
+        } else if (!box.dragActive && savedCondition >= 0) {
+            box.editModeCondition = savedCondition;
+            savedCondition = -1;
+        }
+    }
+    Connections {
+        target: view.box
+        // nach dem Ziehen: Bearbeitungsrahmen wieder weg, normales Verhalten zurueck
+        function onDragActiveChanged() {
+            if (view.box.dragActive) return;
+            view.box.editMode = false;
+            if (!headHover.hovered) view.setDirectMove(false);
+        }
+    }
+
     color: P.bg(Plasmoid.configuration.opacity)
     radius: Kirigami.Units.gridUnit * 0.75
     // dunkle Farbgruppe, damit Eingabefelder und Texte von Plasma hell auf dunkel erscheinen
@@ -40,8 +69,17 @@ Rectangle {
 
         // ---------- Kopf ----------
         RowLayout {
+            id: head
             Layout.fillWidth: true
-            PC3.Label {
+            // Desktop: Liste an der Kopfzeile ziehen = verschieben (wie unter Windows, ohne Bearbeitungsmodus).
+            // Plasma verschiebt Widgets selbst erst nach langem Druecken. Ueber der Kopfzeile stellen wir seinen
+            // Halter (ItemContainer) auf "schon beim Druecken" um; danach wieder zurueck.
+            HoverHandler {
+                id: headHover
+                enabled: !view.inPanel && !Plasmoid.immutable
+                cursorShape: Qt.SizeAllCursor
+                onHoveredChanged: view.setDirectMove(hovered)
+            }            PC3.Label {
                 text: "Todo"
                 color: P.text
                 font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.45 * Plasmoid.configuration.fontScale

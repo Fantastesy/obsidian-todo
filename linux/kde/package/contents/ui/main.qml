@@ -549,6 +549,7 @@ PlasmoidItem {
                 else if (c.indexOf("side=") === 0) Plasmoid.configuration.side = c.substring(5);
                 else if (c.indexOf("accent=") === 0) Plasmoid.configuration.accent = c.substring(7);
                 else if (c.indexOf("hotkey=") === 0) root.setHotkey(c.substring(7));
+                else if (c === "direct" || c === "undirect") { var dv = root.fullRepresentationItem.children[0]; dv.setDirectMove(c === "direct"); root.run("printf %s " + root.q(dv.box ? "bedingung=" + dv.box.editModeCondition : "kein Halter") + " > /tmp/obsidian-todo-test.out"); }
                 else if (c === "status") root.run('printf %s ' + root.q("shown=" + side.shown + " mode=" + root.mode + " hotkey=" + root.hotkey + " version=" + root.version) + ' > /tmp/obsidian-todo-test.out');
             });
         })

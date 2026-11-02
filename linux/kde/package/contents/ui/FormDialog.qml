@@ -179,6 +179,9 @@ PlasmaCore.Dialog {
 
             RowLayout {
                 Layout.fillWidth: true
+                // an der Titelzeile ziehen = Fenster verschieben (KDE uebernimmt das Ziehen)
+                DragHandler { target: null; onActiveChanged: if (active) dlg.startSystemMove() }
+                HoverHandler { cursorShape: Qt.SizeAllCursor }
                 PC3.Label {
                     text: dlg.mode === "edit" ? "Punkt bearbeiten" : "Neuer Punkt"
                     color: P.text
