@@ -1033,24 +1033,58 @@ $helpLines = @(
 $hw = 960                       # Fensterbreite
 $colL = 22; $colR = 500; $colW = 438
 $archive = '["obsidian://open?path=#ArchiveUrl#"]'
-function SetChip($name, $x, $y, $text, $action, $color = '#ColorNote#', $size = 11) {
+# ----- Knoepfe: abgerundete Flaeche mit Rand (Shape) + Beschriftung darueber -----
+# Breite aus der Textbreite (Segoe UI Semibold), damit die Knoepfe ohne Laufzeit-Rechnerei fest liegen.
+Add-Type -AssemblyName System.Drawing, System.Windows.Forms
+$btnFont = New-Object Drawing.Font('Segoe UI Semibold', 11, [Drawing.FontStyle]::Regular, [Drawing.GraphicsUnit]::Point)
+function BtnWidth($text) { [Math]::Max(44, [Windows.Forms.TextRenderer]::MeasureText($text, $btnFont).Width + 22) }
+$btnH = 34
+$script:btnVars = ''
+# $x: absolute X; $y: Y der Flaeche ('10R' unter der Ueberschrift, 'r' = gleiche Zeile wie der vorige Knopf)
+# Zustaende ueber Variablen: B_ Flaeche, S_ Rand, T_ Schrift, O_ Hover-/Klick-Aufhellung
+function SetChip($name, $x, $y, $text, $action, $color = '#ColorNote#', $size = 11, $w = 0) {
+    if (-not $w) { $w = BtnWidth $text }
+    $script:btnVars += "B_$name=255,255,255,14`r`nS_$name=255,255,255,38`r`nT_$name=$color`r`nO_$name=0`r`n"
+    $ty = [int](($btnH - 19) / 2) - 1
+    if ($size -gt 12) { $ty = 2 }
+    # 'r' bezieht sich auf die Beschriftung des vorigen Knopfs (liegt $ty tiefer als dessen Flaeche)
+    $sy = if ($y -eq 'r') { "-$($script:lastTy)r" } else { $y }
+    $script:lastTy = $ty
+    $hover = "[!SetVariable O_$name 26][!UpdateMeter $name][!Redraw]"
+    $leave = "[!SetVariable O_$name 0][!UpdateMeter $name][!Redraw]"
+    $down = "[!SetVariable O_$name 60][!UpdateMeter $name][!Redraw]"
 @"
 [$name]
-Meter=String
+Meter=Shape
 X=$x
-Y=$y
-Padding=14,6,14,6
+Y=$sy
+DynamicVariables=1
+Shape=Rectangle 0.5,0.5,$($w - 1),$($btnH - 1),8 | Fill Color #B_$name# | StrokeWidth 1 | Stroke Color #S_$name#
+Shape2=Rectangle 0.5,0.5,$($w - 1),$($btnH - 1),8 | Fill Color 255,255,255,#O_$name# | StrokeWidth 0
+MouseOverAction=$hover
+MouseLeaveAction=$leave
+LeftMouseDownAction=$down
+LeftMouseUpAction=$hover$action
+
+[${name}Text]
+Meter=String
+X=$([int]($w / 2))r
+Y=${ty}r
+StringAlign=Center
+DynamicVariables=1
 FontFace=#FontFace#
 FontSize=$size
 FontWeight=600
-FontColor=$color
-SolidColor=255,255,255,16
+FontColor=#T_$name#
 AntiAlias=1
 Text=$text
-LeftMouseUpAction=$action
 
 
 "@
+}
+# unsichtbare Linie an der Unterkante der letzten Knopfreihe, damit 'R' darunter richtig Abstand haelt
+function Spacer($name, $x) {
+    "[$name]`r`nMeter=Image`r`nX=$x`r`nY=$($btnH - $script:lastTy)r`r`nW=1`r`nH=1`r`n`r`n"
 }
 function Caption($name, $text, $x = 22, $y = '22R') {
 @"
@@ -1086,7 +1120,9 @@ Text=$text
 "@
 }
 # ausgewaehlter Knopf in der Akzentfarbe
-$sel = '[!SetOption {0} SolidColor "#ColorCheck#"][!SetOption {0} FontColor "#ColorText#"]'
+$sel = '[!SetVariable B_{0} "#ColorCheck#"][!SetVariable S_{0} "#ColorCheck#"][!SetVariable T_{0} "#ColorText#"][!UpdateMeter *][!Redraw]'
+# Farbpunkte: ausgewaehlter bekommt einen hellen Ring
+$selRing = '[!SetVariable S_{0} "255,255,255,230"][!SetVariable B_{0} "255,255,255,40"][!UpdateMeter *][!Redraw]'
 # Wert in prefs.inc / colors.inc schreiben
 function P($k, $v) { "[!WriteKeyValue Variables $k `"$v`" `"#@#prefs.inc`"]" }
 function C($k, $v) { "[!WriteKeyValue Variables $k `"$v`" `"#@#colors.inc`"]" }
@@ -1102,11 +1138,14 @@ function Row($key, $caption, $x, $y, $current, $opts) {
         $i++
         $color = if ($o.Count -gt 3) { $o[3] } else { '#ColorNote#' }
         $size = if ($o.Count -gt 4) { $o[4] } else { 11 }
-        $s += SetChip "$key$i" $cx $cy $o[0] $o[2] $color $size
+        $w = if ($size -gt 12) { 44 } else { BtnWidth $o[0] }
+        $s += SetChip "$key$i" $cx $cy $o[0] $o[2] $color $size $w
         $n = if ($i -eq 1) { '' } else { "$i" }
-        $m += "IfMatch$n=$($o[1])`r`nIfMatchAction$n=$($sel -f "$key$i")`r`n"
-        $cx = '8R'; $cy = 'r'
+        $how = if ($size -gt 12) { $selRing } else { $sel }
+        $m += "IfMatch$n=$($o[1])`r`nIfMatchAction$n=$($how -f "$key$i")`r`n"
+        $cx = $cx + $w + 8; $cy = 'r'
     }
+    $s += Spacer "End$key" $x
     $s + $m + "`r`n"
 }
 
@@ -1266,6 +1305,7 @@ $hini += Row 'Hotkey' 'Tastenkürzel für neuen Punkt' $colR '22R' '#HotkeyNow#'
 $hini += Caption 'CapFile' 'Todo-Datei' $colR
 $hini += Small 'FileNow' '#TodoFile#' $colR
 $hini += SetChip 'File1' $colR '10R' 'Andere Datei wählen …' '[!CommandMeasure MeasureChoose "Run"]'
+$hini += Spacer 'EndFile' $colR
 $hini += Row 'Update' 'Automatische Updates' $colR '22R' '#AutoUpdate#' @(
     @('An', '^1$', "$(P AutoUpdate 1)[!Refresh]"),
     @('Aus', '^0$', "$(P AutoUpdate 0)[!Refresh]"))
@@ -1325,6 +1365,8 @@ FontColor=#ColorDone#
 AntiAlias=1
 Text=Version $Version
 "@
+# Startwerte der Knopf-Variablen in [Variables] (vor colors.inc)
+$hini = $hini.Replace("ColorHover=255,255,255,22`r`n@IncludeColors", "ColorHover=255,255,255,22`r`n" + $script:btnVars.Replace('#ColorNote#', '200,200,212,255') + "@IncludeColors")
 New-Item -ItemType Directory -Force "$skin\Einstellungen" | Out-Null
 [IO.File]::WriteAllText("$skin\Einstellungen\Einstellungen.ini", $hini, [Text.Encoding]::Unicode)
 
