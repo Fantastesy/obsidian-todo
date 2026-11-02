@@ -303,7 +303,7 @@ Window {
                     ["Seitenleiste", "Maus an den Bildschirmrand – die Liste gleitet herein"],
                     ["Anmelden, Aufwachen, Entsperren", "die Liste kommt kurz von selbst"],
                     ["Farben", "orange = heute fällig, rot = überfällig"],
-                    ["Verschieben auf dem Desktop", "Rechtsklick auf den Desktop → Bearbeitungsmodus"],
+                    ["Verschieben auf dem Desktop", "an der Kopfzeile (bei „Todo“) ziehen"],
                     ["Entfernen", "Rechtsklick auf die Liste oder im Startmenü „Obsidian To-do entfernen“"]
                 ]
                 delegate: PC3.Label {

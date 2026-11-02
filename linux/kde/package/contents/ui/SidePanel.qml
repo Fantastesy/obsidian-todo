@@ -103,6 +103,7 @@ Item {
     // ---------- Panel ----------
     // Das Fenster reicht bis an den Bildschirmrand; darin gleitet die Liste von aussen herein.
     readonly property int panelW: Plasmoid.configuration.listWidth + margin
+    readonly property Item panelItem: panel.mainItem   // nur fuer Tests (Bild der Liste)
     PlasmaCore.Dialog {
         id: panel
         visible: side.shown || side.slide > 0

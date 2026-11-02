@@ -4,7 +4,11 @@
 
 ### Nur Linux (KDE)
 - **Datum wählen zeigte unter Kubuntu/Ubuntu keinen Kalender** (keine Tageszahlen, Qt 6.10). Der Kalender ist jetzt selbst gebaut und funktioniert überall. Das Formular wird außerdem nie höher als der Bildschirm; passt es nicht, lässt es sich scrollen.
+- Kurzhilfe in den Einstellungen: Verschieben auf dem Desktop geht an der Kopfzeile (nicht mehr über den Bearbeitungsmodus).
 - **Update von Hand zeigte weiter die alte Liste:** Plasma behielt die alte Widget-Version im Speicher, bis man sich neu anmeldete (keine Einstellungen, keine Seitenleiste). Das Setup startet Plasma jetzt am Ende neu, dann ist die neue Version sofort da. Der Bildschirm flackert dabei kurz.
+
+### Windows
+- Keine Änderungen (gleiche Version wie 1.2.1, nur neue Nummer).
 
 ## 1.2.1 – 2. November 2026
 

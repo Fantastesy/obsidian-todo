@@ -36,7 +36,7 @@ EOF
 printf "#!/bin/bash\nexec sudo -u abc /usr/local/bin/insession-inner \"\$@\"\n" > /usr/local/bin/insession
 chmod +x /usr/local/bin/insession /usr/local/bin/insession-inner'
 
-shot() { docker exec $c insession bash -c "spectacle -b -n -f -o /tmp/$1.png; sleep 2"; docker cp $c:/tmp/$1.png "$(cd "$out" && (pwd -W 2>/dev/null || pwd))/$prefix-$1.png" >/dev/null 2>&1 && echo "Bild: $prefix-$1.png"; }
+shot() { [ -n "${NOSHOT:-}" ] && return; docker exec $c insession bash -c "spectacle -b -n -f -o /tmp/$1.png; sleep 2"; docker cp $c:/tmp/$1.png "$(cd "$out" && (pwd -W 2>/dev/null || pwd))/$prefix-$1.png" >/dev/null 2>&1 && echo "Bild: $prefix-$1.png"; }
 cpu() { docker exec $c bash -c 'p=$(pgrep -x plasmashell | head -1); a=$(awk "{print $14+$15}" /proc/$p/stat); sleep 3; b=$(awk "{print $14+$15}" /proc/$p/stat); echo $(( (b-a) * 100 / 300 ))'; }
 
 echo "== Setup: $(basename "$setup")"

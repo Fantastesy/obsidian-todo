@@ -558,6 +558,14 @@ PlasmoidItem {
                 else if (c === "closeform") form.visible = false;
                 else if (c === "formcal") form.calOpen = !form.calOpen;
                 else if (c === "formshot") form.contentItem.grabToImage(function (r) { r.saveToFile("/tmp/obsidian-todo-form.png"); });
+                else if (c.indexOf("grab=") === 0) {
+                    var gn = c.substring(5);
+                    var gi = gn === "form" ? form.contentItem : gn === "settings" ? settings.contentItem : gn === "panel" ? side.panelItem : root.fullRepresentationItem;
+                    if (gi) gi.grabToImage(function (r) { r.saveToFile("/tmp/obsidian-todo-" + gn + ".png"); });
+                }
+                else if (c.indexOf("formfill=") === 0) form.testFill(c.substring(9));
+                else if (c.indexOf("choose=") === 0) root.chooseTodo(c.substring(7));
+                else if (c === "todo") root.run('{ echo "datei=' + root.todoFile + '"; cat ' + root.q(root.todoFile) + '; } > /tmp/obsidian-todo-test.out');
                 else if (c === "formsize") root.run('printf %s ' + root.q("window=" + form.width + "x" + form.height + " inhalt=" + form.wantW + "x" + form.wantH) + ' > /tmp/obsidian-todo-test.out');
                 else if (c === "notes") root.toggleNotes(root.rows[0].key);
                 else if (c === "settings") root.openSettings();

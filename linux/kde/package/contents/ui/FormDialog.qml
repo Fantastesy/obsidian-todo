@@ -83,6 +83,14 @@ Window {
         titleField.forceActiveFocus();
     }
 
+    // nur fuer Tests: Formular wie von Hand ausfuellen (Titel, Datum per Kalender morgen, 09:00, woechentlich) und speichern
+    function testFill(t) {
+        titleField.text = t;
+        var m = Core.addDays(Core.today(), 1);
+        date = Core.iso(m); time = "09:00"; rule = "wöchentlich";
+        save();
+    }
+
     // ---------- Wiederholung ----------
     function loadCustom(r) {
         custN = 1; custUnit = 0;
