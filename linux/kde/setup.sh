@@ -6,7 +6,7 @@
 # Optionen:
 #   --silent      Update ohne Rueckfragen (nutzt die gespeicherte Einrichtung)
 #   --uninstall   Widget entfernen (Todo.md und Archiv bleiben erhalten), --yes ohne Rueckfrage
-#   --mode panel|desktop|both   Anzeige umschalten: Seitenleiste rechts, Desktop oder beides
+#   --mode sidebar|desktop|both Anzeige umschalten: Seitenleiste, Desktop oder beides (sonst im Zahnrad-Fenster)
 #
 # Das fertige Setup enthaelt das Widget als Anhang (siehe linux/build-kde.sh).
 set -u
@@ -102,46 +102,37 @@ else
 fi
 [ -f "$PKG/metadata.json" ] || fail "Widget-Dateien nicht gefunden."
 
-# ---------- Anzeige einrichten: Seitenleiste rechts, Desktop oder beides ----------
-# Seitenleiste = KDE-Leiste am rechten Rand mit "automatisch ausblenden": erscheint, wenn die Maus an den
-# Rand faehrt, bleibt offen, solange die Maus drin ist, und faehrt beim Einblenden des Widgets heraus.
+# ---------- Anzeige einrichten: Seitenleiste, Desktop oder beides ----------
+# Seit 1.2.0 liegt das Widget immer auf dem Desktop des Hauptbildschirms; die Seitenleiste (Streifen am Rand +
+# bildschirmhohes Panel) macht das Widget selbst. Die Anzeige steht in den Widget-Einstellungen (mode).
+# Alte Versionen hatten eine eigene KDE-Leiste am rechten Rand - die wird hier entfernt.
+#   $1 = sidebar|desktop|both (panel = alter Name fuer sidebar), $2 = 1: nur umbauen, wenn noch eine alte Leiste da ist
 apply_mode() {
-    local wantPanel=false wantDesk=false
-    case "$1" in
-        panel) wantPanel=true ;;
-        desktop) wantDesk=true ;;
-        both) wantPanel=true; wantDesk=true ;;
-        *) return 1 ;;
-    esac
+    local m="$1"
+    [ "$m" = panel ] && m=sidebar
+    case "$m" in sidebar|desktop|both) ;; *) return 1 ;; esac
     plasma_script "
-var id = '$PLUGIN_ID', wantPanel = $wantPanel, wantDesk = $wantDesk, inPanel = false, onDesk = false;
+var id = '$PLUGIN_ID', mode = '$m', onlyMigrate = '${2:-0}' === '1', hadPanel = false, w = null;
 panels().forEach(function (p) {
     var ours = p.widgets(id);
     if (!ours.length) return;
-    if (wantPanel) { inPanel = true; return; }
+    hadPanel = true;
     var others = p.widgets().length - ours.length;
-    ours.forEach(function (w) { w.remove(); });
+    ours.forEach(function (x) { x.remove(); });
     if (others === 0) p.remove();
 });
-desktops().forEach(function (d) {
-    d.widgets(id).forEach(function (w) { if (wantDesk) onDesk = true; else w.remove(); });
-});
-if (wantPanel && !inPanel) {
-    var p = new Panel;
-    p.location = 'right';
-    // schmaler Streifen ueber die ganze Hoehe; die Liste klappt beim Drueberfahren daneben auf
-    p.height = Math.round(gridUnit * 2);
-    try { p.hiding = 'autohide'; } catch (e) {}
-    var pw = p.addWidget(id);
-    pw.globalShortcut = '$SHORTCUT';
-}
-if (wantDesk && !onDesk) {
-    var d = desktops()[0];
-    for (var i = 0; i < desktops().length; i++) if (desktops()[i].screen === 0) d = desktops()[i];
-    var w = d.addWidget(id);
-    if (!wantPanel) w.globalShortcut = '$SHORTCUT';
-    var g = screenGeometry(d.screen);
-    w.geometry = new QRectF(g.width - 520, 60, 480, 560);
+if (!(onlyMigrate && !hadPanel)) {
+    desktops().forEach(function (d) { d.widgets(id).forEach(function (x) { if (!w) w = x; else x.remove(); }); });
+    if (!w) {
+        var d = desktops()[0];
+        for (var i = 0; i < desktops().length; i++) if (desktops()[i].screen === 0) d = desktops()[i];
+        w = d.addWidget(id);
+        var g = screenGeometry(d.screen);
+        w.geometry = new QRectF(g.width - 520, 60, 480, 560);
+        w.globalShortcut = '$SHORTCUT';
+    }
+    w.currentConfigGroup = ['General'];
+    w.writeConfig('mode', mode);
 }"
 }
 set_conf() {   # $1 Schluessel, $2 Wert
@@ -176,7 +167,7 @@ fi
 # ---------- Nur Anzeige umschalten (Rechtsklick-Menue des Widgets) ----------
 if [ -n "$SET_MODE" ]; then
     [ -f "$CONF" ] || fail "$APP ist noch nicht eingerichtet."
-    case "$SET_MODE" in panel|desktop|both) ;; *) fail "Unbekannte Anzeige: $SET_MODE (panel, desktop oder both)." ;; esac
+    case "$SET_MODE" in panel|sidebar|desktop|both) ;; *) fail "Unbekannte Anzeige: $SET_MODE (sidebar, desktop oder both)." ;; esac
     apply_mode "$SET_MODE" || fail "KDE Plasma hat die Änderung nicht angenommen. Bitte später noch einmal versuchen."
     set_conf MODE "$SET_MODE"
     exit 0
@@ -421,7 +412,10 @@ command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$
 
 # ---------- Anzeige einrichten (beim Update bleibt alles, wie es ist) ----------
 if [ "$SILENT" = 0 ]; then
-    apply_mode "${MODE:-panel}" || log "Anzeige konnte nicht automatisch eingerichtet werden"
+    apply_mode "${MODE:-sidebar}" || log "Anzeige konnte nicht automatisch eingerichtet werden"
+else
+    # Update von einer Version mit eigener KDE-Leiste: auf das neue Desktop-Widget umbauen
+    apply_mode "${MODE:-sidebar}" 1 || log "Umbau der alten Seitenleiste fehlgeschlagen"
 fi
 
 log "fertig: $TODO_FILE (Version $VERSION)"
@@ -429,9 +423,9 @@ if [ "$SILENT" = 1 ]; then
     command -v notify-send >/dev/null 2>&1 && notify-send -a "$APP" -i checkbox "$APP aktualisiert" "Version $VERSION ist installiert. Sie wird nach dem nächsten Anmelden aktiv."
 else
     case "${MODE:-panel}" in
-        panel) where="Die Liste erscheint, wenn du mit der Maus an den rechten Bildschirmrand fährst, und nach dem Anmelden/Aufklappen kurz von selbst." ;;
+        panel|sidebar) where="Die Liste gleitet herein, wenn du mit der Maus an den rechten Bildschirmrand fährst, und nach dem Anmelden/Aufklappen kurz von selbst." ;;
         desktop) where="Die Liste liegt oben rechts auf deinem Desktop." ;;
-        *) where="Die Liste liegt auf deinem Desktop und erscheint zusätzlich am rechten Bildschirmrand." ;;
+        *) where="Die Liste liegt auf deinem Desktop und gleitet zusätzlich am rechten Bildschirmrand herein." ;;
     esac
     info "Fertig!
 
@@ -440,7 +434,8 @@ Gespeichert wird in:
 $TODO_FILE
 
 Neuer Punkt von überall: $SHORTCUT
-Anzeige umschalten oder entfernen: Rechtsklick auf die Liste.
+Anzeige, Farben und mehr: Zahnrad neben „Todo“.
+Entfernen: Rechtsklick auf die Liste.
 Entfernen geht auch über das Startmenü: „Obsidian To-do entfernen“."
 fi
 exit 0

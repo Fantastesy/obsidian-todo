@@ -1,5 +1,6 @@
 // Kaestchen wie unter Windows: abgerundet, offen mit hellem Rahmen, abgehakt lila mit Haken
 import QtQuick
+import org.kde.plasma.plasmoid
 import org.kde.kirigami as Kirigami
 import "../code/palette.js" as P
 
@@ -12,7 +13,7 @@ Rectangle {
     implicitWidth: size
     implicitHeight: size
     radius: Math.max(2, size / 6)
-    color: checked ? P.check : (hov.hovered ? P.hover : "transparent")
+    color: checked ? P.check(Plasmoid.configuration.accent) : (hov.hovered ? P.hover : "transparent")
     border.width: checked ? 0 : 1.2
     border.color: P.box
 

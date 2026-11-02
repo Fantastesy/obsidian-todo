@@ -1,5 +1,6 @@
 // Formular fuer neue Punkte und "bearbeiten" - gleiche Moeglichkeiten und gleicher Look wie unter Windows
 import QtQuick
+import org.kde.plasma.plasmoid
 import QtQuick.Layouts
 import QtQuick.Window
 import QtQuick.Dialogs
@@ -164,7 +165,7 @@ PlasmaCore.Dialog {
                 radius: Kirigami.Units.gridUnit * 0.4
                 color: P.field
                 border.width: 1
-                border.color: parent.activeFocus ? P.check : P.fieldBorder
+                border.color: parent.activeFocus ? P.check(Plasmoid.configuration.accent) : P.fieldBorder
             }
         }
 
@@ -248,15 +249,15 @@ PlasmaCore.Dialog {
                         readonly property bool sel: dayIso === dlg.date
                         implicitHeight: Kirigami.Units.gridUnit * 1.7
                         radius: Kirigami.Units.gridUnit * 0.4
-                        color: sel ? P.check : (dayHover.hovered ? P.chipHover : "transparent")
+                        color: sel ? P.check(Plasmoid.configuration.accent) : (dayHover.hovered ? P.chipHover : "transparent")
                         border.width: model.today && !sel ? 1 : 0
-                        border.color: P.accent
+                        border.color: P.accent(Plasmoid.configuration.accent)
                         opacity: model.month === dlg.calMonth ? 1 : 0.3
                         HoverHandler { id: dayHover; cursorShape: Qt.PointingHandCursor }
                         PC3.Label {
                             anchors.centerIn: parent
                             text: model.day
-                            color: parent.sel ? P.text : (model.today ? P.accent : P.note)
+                            color: parent.sel ? P.text : (model.today ? P.accent(Plasmoid.configuration.accent) : P.note)
                             font.bold: parent.sel
                         }
                     }
@@ -347,7 +348,7 @@ PlasmaCore.Dialog {
                 Layout.topMargin: Kirigami.Units.largeSpacing
                 implicitHeight: summaryLabel.implicitHeight + Kirigami.Units.largeSpacing * 2
                 radius: Kirigami.Units.gridUnit * 0.4
-                color: P.summaryBg
+                color: P.soft(Plasmoid.configuration.accent)
                 PC3.Label {
                     id: summaryLabel
                     anchors.left: parent.left
@@ -356,7 +357,7 @@ PlasmaCore.Dialog {
                     anchors.margins: Kirigami.Units.largeSpacing
                     wrapMode: Text.Wrap
                     text: dlg.errorText !== "" ? dlg.errorText : Core.summary(dlg.currentForm())
-                    color: dlg.errorText !== "" ? P.over : P.accent
+                    color: dlg.errorText !== "" ? P.over : P.accent(Plasmoid.configuration.accent)
                 }
             }
 

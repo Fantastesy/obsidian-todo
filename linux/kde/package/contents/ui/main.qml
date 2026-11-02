@@ -20,6 +20,10 @@ PlasmoidItem {
     property string home: ""
     property bool configMissing: false
     property bool hasNotifySend: false
+    property string version: ""
+    // Tastenkuerzel fuer "neuer Punkt" (Einstellungen); "" = aus
+    readonly property string hotkey: Plasmoid.globalShortcut ? String(Plasmoid.globalShortcut) : ""
+    readonly property string mode: Plasmoid.configuration.mode
 
     // ---------- Zustand ----------
     property var model: null          // Ergebnis von Core.parse
@@ -48,6 +52,8 @@ PlasmoidItem {
     // (Die ganze Liste IN einer Leiste geht nicht: KDE begrenzt die Leistenbreite, und das Umschalten
     //  zwischen Symbol und Liste schaukelte sich mit der Leistengroesse zu einer Dauerschleife auf.)
     preferredRepresentation: Plasmoid.formFactor === PlasmaCore.Types.Planar ? fullRepresentation : compactRepresentation
+    // Desktop-Liste bei "Beides": blendet aus, solange das Panel am Rand offen ist
+    readonly property real deskOpacity: mode === "both" && side.shown ? 0 : 1
     readonly property bool inPanel: Plasmoid.formFactor === PlasmaCore.Types.Vertical || Plasmoid.formFactor === PlasmaCore.Types.Horizontal
 
     // ---------- Einblenden beim Anmelden / Aufwachen / Entsperren ----------
@@ -61,24 +67,36 @@ PlasmoidItem {
     // Den Status NICHT selbst auf "Aufmerksamkeit" setzen: KDE merkt sich beim Aufklappen den Status
     // und stellt ihn beim Zuklappen wieder her - dann bliebe die Leiste dauerhaft sichtbar.
     function reveal() {
-        if (!model || model.openCount === 0 || !inPanel) return;
-        revealTimer.interval = Math.min(120, 10 * model.openCount) * 1000;
+        var per = Plasmoid.configuration.revealPerItem;
+        if (!model || model.openCount === 0 || per <= 0) return;
+        var secs = Math.min(120, per * model.openCount);
+        if (inPanel) {
+            // Widget steckt (von Hand) in einer Leiste: Popup aufklappen
+            revealTimer.interval = secs * 1000;
+            revealed = true;
+            autoOpened = true;
+            root.expanded = true;
+            revealTimer.restart();
+            return;
+        }
+        if (mode === "desktop") return;
         revealed = true;
-        autoOpened = true;
-        root.expanded = true;
+        revealTimer.interval = secs * 1000;
         revealTimer.restart();
+        side.reveal(secs);
     }
     function hideReveal() {
         revealTimer.stop();
         revealed = false;
         if (autoOpened) { root.expanded = false; autoOpened = false; }
+        side.hide();
     }
-    // Maus hat die aufgeklappte Liste verlassen
-    function hoverLeft() { if (autoOpened && !revealed) closeTimer.restart(); }
-    function hoverEntered() { closeTimer.stop(); }
+    // Maus im Panel der Seitenleiste bzw. im aufgeklappten Popup
+    function hoverLeft() { if (inPanel) { if (autoOpened && !revealed) closeTimer.restart(); } else side.leave(); }
+    function hoverEntered() { closeTimer.stop(); side.enter(); }
     Timer { id: closeTimer; interval: 900; onTriggered: { if (root.autoOpened) { root.expanded = false; root.autoOpened = false; } } }
     onExpandedChanged: if (!expanded) autoOpened = false
-    Timer { id: revealTimer; onTriggered: root.hideReveal() }
+    Timer { id: revealTimer; onTriggered: { root.revealed = false; if (root.autoOpened) { root.expanded = false; root.autoOpened = false; } } }
 
     // Aufwachen: waehrend Standby laufen keine Timer -> grosse Luecke zwischen zwei Durchlaeufen
     property double lastTick: Date.now()
@@ -106,10 +124,7 @@ PlasmoidItem {
     Plasmoid.contextualActions: [
         PlasmaCore.Action { text: "Neuer Punkt"; icon.name: "list-add"; onTriggered: root.openForm(null) },
         PlasmaCore.Action { text: "In Obsidian öffnen"; icon.name: "document-open"; onTriggered: root.openInObsidian() },
-        PlasmaCore.Action { isSeparator: true },
-        PlasmaCore.Action { text: "Anzeige: Seitenleiste rechts"; icon.name: "view-split-left-right"; onTriggered: root.runSetup("--mode panel") },
-        PlasmaCore.Action { text: "Anzeige: auf dem Desktop"; icon.name: "user-desktop"; onTriggered: root.runSetup("--mode desktop") },
-        PlasmaCore.Action { text: "Anzeige: beides"; icon.name: "view-list-details"; onTriggered: root.runSetup("--mode both") },
+        PlasmaCore.Action { text: "Einstellungen …"; icon.name: "configure"; onTriggered: root.openSettings() },
         PlasmaCore.Action { isSeparator: true },
         PlasmaCore.Action { text: "Obsidian To-do entfernen …"; icon.name: "edit-delete"; onTriggered: root.runSetup("--uninstall") }
     ]
@@ -142,13 +157,51 @@ PlasmoidItem {
         }
     }
 
-    fullRepresentation: TodoView {
-        app: root
+    // Desktop: die Liste (bei "Seitenleiste" unsichtbar - dann gibt es nur das Panel am Rand)
+    fullRepresentation: Item {
+        Layout.preferredWidth: deskView.implicitWidth
+        Layout.preferredHeight: deskView.implicitHeight
+        Layout.minimumWidth: Kirigami.Units.gridUnit * 16
+        Layout.minimumHeight: Kirigami.Units.gridUnit * 4
+        TodoView {
+            id: deskView
+            app: root
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: Math.min(implicitHeight, parent.height)
+            visible: root.mode !== "sidebar" || root.inPanel
+            opacity: root.inPanel ? 1 : root.deskOpacity
+            Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } }
+        }
     }
 
     FormDialog {
         id: form
         app: root
+    }
+    SidePanel {
+        id: side
+        app: root
+    }
+    SettingsDialog {
+        id: settings
+        app: root
+    }
+    function openSettings() { settings.open(); }
+    function setHotkey(k) { Plasmoid.globalShortcut = k; }
+    // Todo-Datei wechseln: Vault = naechster Ordner mit .obsidian darueber; Dateien anlegen; config umschreiben
+    function chooseTodo(path) {
+        if (!path) return;
+        if (!/\.md$/i.test(path)) path += ".md";
+        run('f=' + q(path) + '; d=$(dirname "$f"); a="$d/Todo-Archiv.md"; v="$d"; p="$d"; '
+            + 'while [ "$p" != "/" ] && [ -n "$p" ]; do [ -d "$p/.obsidian" ] && { v="$p"; break; }; p=$(dirname "$p"); done; '
+            + 'mkdir -p "$d"; [ -f "$f" ] || printf "# Todo\\n\\n- [ ] Mein erster Punkt\\n" > "$f"; '
+            + '[ -f "$a" ] || printf "# Todo-Archiv\\n" > "$a"; '
+            + 'c="$HOME/.config/obsidian-todo/config"; mkdir -p "$(dirname "$c")"; touch "$c"; '
+            + 'grep -v -E "^(VAULT|VAULT_NAME|TODO_FILE|ARCHIVE_FILE)=" "$c" > "$c.tmp"; '
+            + 'printf "VAULT=%s\\nVAULT_NAME=%s\\nTODO_FILE=%s\\nARCHIVE_FILE=%s\\n" "$v" "$(basename "$v")" "$f" "$a" >> "$c.tmp" && mv -f "$c.tmp" "$c"',
+            function () { lastContent = ""; model = null; loadConfig(); });
     }
 
     // Tastenkuerzel des Widgets (Setup traegt Meta+Shift+T ein) -> neuer Punkt
@@ -193,7 +246,7 @@ PlasmoidItem {
 
     // ---------- Einstellungen laden ----------
     function loadConfig() {
-        run('printf "HOME=%s\\n" "$HOME"; cat "$HOME/.config/obsidian-todo/config" 2>/dev/null; command -v notify-send >/dev/null && echo NOTIFY=1; printf "TEST=%s\\n" "$OBSIDIAN_TODO_TEST"',
+        run('printf "HOME=%s\\n" "$HOME"; cat "$HOME/.config/obsidian-todo/config" 2>/dev/null; command -v notify-send >/dev/null && echo NOTIFY=1; printf "TEST=%s\\n" "$OBSIDIAN_TODO_TEST"; printf "APPVERSION=%s\\n" "$(head -n1 "${XDG_DATA_HOME:-$HOME/.local/share}/obsidian-todo/version.txt" 2>/dev/null)"',
             function (code, out) {
                 var cfg = {};
                 out.split("\n").forEach(function (l) {
@@ -205,6 +258,7 @@ PlasmoidItem {
                 archiveFile = cfg.ARCHIVE_FILE || "";
                 vaultName = cfg.VAULT_NAME || "";
                 hasNotifySend = cfg.NOTIFY === "1";
+                version = cfg.APPVERSION || "";
                 configMissing = todoFile === "";
                 refresh();
                 // nur fuer automatische Tests: OBSIDIAN_TODO_TEST=new|edit oeffnet das Formular
@@ -421,8 +475,9 @@ PlasmoidItem {
 
     // ---------- Erinnerungen ----------
     function checkReminders() {
-        if (!model) return;
-        Core.dueReminders(model, reminderState, new Date()).forEach(function (r) {
+        if (!model || !Plasmoid.configuration.remindOn) return;
+        var lead = Plasmoid.configuration.remindLead * 60000;
+        Core.dueReminders(model, reminderState, new Date(Date.now() + lead)).forEach(function (r) {
             var body = r.title + " (" + r.time + ")";
             if (hasNotifySend) {
                 run('notify-send -a "Obsidian Todo" -i checkbox -u critical --action=done=Erledigt --action=snooze="In 15 Min nochmal" --wait "Todo fällig" ' + q(body),
@@ -452,6 +507,7 @@ PlasmoidItem {
 
     // ---------- Automatische Updates (update.sh prueft selbst hoechstens alle 6 Stunden) ----------
     function checkUpdate() {
+        if (!Plasmoid.configuration.autoUpdate) return;
         run('u="$HOME/.local/share/obsidian-todo/update.sh"; [ -x "$u" ] && "$u" >/dev/null 2>&1; true');
     }
     Timer {
@@ -474,6 +530,28 @@ PlasmoidItem {
             else if (mode === "grab") root.fullRepresentationItem.grabToImage(function (r) { r.saveToFile(root.home + "/grab.png"); });
             else root.openForm(mode === "edit" && root.rows.length ? root.rows[0] : null);
         }
+    }
+
+    // nur fuer automatische Tests: Befehle aus /tmp/obsidian-todo-test.cmd (Datei wird danach geloescht)
+    // show | hide | settings | reveal | edge | mode=<sidebar|desktop|both> | side=<left|right>
+    Timer {
+        interval: 1500; running: true; repeat: true
+        onTriggered: root.run('f=/tmp/obsidian-todo-test.cmd; [ -f "$f" ] && { cat "$f"; rm -f "$f"; }; true', function (code, out) {
+            out.split("\n").forEach(function (c) {
+                c = c.trim();
+                if (c === "show") side.show();
+                else if (c === "hide") side.hide();
+                else if (c === "edge") side.edgeHit();
+                else if (c === "settings") root.openSettings();
+                else if (c === "closesettings") settings.visible = false;
+                else if (c === "reveal") root.reveal();
+                else if (c.indexOf("mode=") === 0) Plasmoid.configuration.mode = c.substring(5);
+                else if (c.indexOf("side=") === 0) Plasmoid.configuration.side = c.substring(5);
+                else if (c.indexOf("accent=") === 0) Plasmoid.configuration.accent = c.substring(7);
+                else if (c.indexOf("hotkey=") === 0) root.setHotkey(c.substring(7));
+                else if (c === "status") root.run('printf %s ' + root.q("shown=" + side.shown + " mode=" + root.mode + " hotkey=" + root.hotkey + " version=" + root.version) + ' > /tmp/obsidian-todo-test.out');
+            });
+        })
     }
 
     Component.onCompleted: loadConfig()

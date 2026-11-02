@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Einstellungen des Widgets (Einstellungen-Fenster, Zahnrad). Gleiche Auswahl wie unter Windows. -->
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <!-- sidebar | desktop | both -->
+    <entry name="mode" type="String"><default>sidebar</default></entry>
+    <!-- right | left -->
+    <entry name="side" type="String"><default>right</default></entry>
+    <!-- Breite in Pixeln: 380 / 460 / 560 -->
+    <entry name="listWidth" type="Int"><default>460</default></entry>
+    <!-- Schrift: 0.9 / 1.0 / 1.15 -->
+    <entry name="fontScale" type="Double"><default>1.0</default></entry>
+    <!-- lila | blau | gruen | orange | rot | pink -->
+    <entry name="accent" type="String"><default>lila</default></entry>
+    <!-- Deckkraft des Hintergrunds 0..255 -->
+    <entry name="opacity" type="Int"><default>218</default></entry>
+    <!-- fast | normal | slow: Wartezeit nach Maus-weg -->
+    <entry name="speed" type="String"><default>normal</default></entry>
+    <!-- Einblenden: Sekunden pro offenem Punkt, 0 = aus -->
+    <entry name="revealPerItem" type="Int"><default>10</default></entry>
+    <entry name="remindOn" type="Bool"><default>true</default></entry>
+    <!-- Erinnerung so viele Minuten vorher -->
+    <entry name="remindLead" type="Int"><default>0</default></entry>
+    <entry name="autoUpdate" type="Bool"><default>true</default></entry>
+  </group>
+</kcfg>

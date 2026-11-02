@@ -1,5 +1,6 @@
 // Liste der Punkte im Windows-Look: dunkel, halbdurchsichtig, abgerundet
 import QtQuick
+import org.kde.plasma.plasmoid
 import QtQuick.Layouts
 import org.kde.plasma.components as PC3
 import org.kde.kirigami as Kirigami
@@ -8,9 +9,10 @@ import "../code/palette.js" as P
 Rectangle {
     id: view
     property var app
-    property bool showHelp: false
+    // im Panel der Seitenleiste (SidePanel.qml): Maus rein/raus steuert das Hinausgleiten
+    property bool inPanel: false
 
-    color: P.bg
+    color: P.bg(Plasmoid.configuration.opacity)
     radius: Kirigami.Units.gridUnit * 0.75
     // dunkle Farbgruppe, damit Eingabefelder und Texte von Plasma hell auf dunkel erscheinen
     Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
@@ -23,8 +25,8 @@ Rectangle {
     Layout.preferredHeight: implicitHeight
     Layout.minimumHeight: implicitHeight
 
-    // aufgeklappt aus der Seitenleiste: Maus raus -> nach kurzer Zeit wieder zuklappen
     HoverHandler {
+        enabled: view.inPanel
         onHoveredChanged: hovered ? view.app.hoverEntered() : view.app.hoverLeft()
     }
 
@@ -42,19 +44,22 @@ Rectangle {
             PC3.Label {
                 text: "Todo"
                 color: P.text
-                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.45
+                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.45 * Plasmoid.configuration.fontScale
                 font.bold: true
                 HoverHandler { cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: view.app.openInObsidian() }
                 PC3.ToolTip { text: "In Obsidian öffnen" }
             }
-            PC3.Label {
-                text: "?"
-                color: view.showHelp ? P.accent : P.done
-                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.2
+            // Zahnrad: Einstellungen (wie unter Windows)
+            Chip {
+                iconButton: true
+                // Zahnrad als Schriftzeichen (Breeze hat kein verlaessliches Zahnrad-Symbol); FE0E = nicht als Emoji
+                text: "\u2699\uFE0E"
+                fontScale: 1.35
+                bold: false
+                textColor: P.done
                 Layout.leftMargin: Kirigami.Units.smallSpacing
-                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: view.showHelp = !view.showHelp }
+                onClicked: view.app.openSettings()
             }
             Item { Layout.fillWidth: true }
             // nach dem Einblenden (Anmelden/Aufwachen): sofort wieder ausblenden
@@ -71,40 +76,10 @@ Rectangle {
                 font.weight: Font.DemiBold
             }
             Chip {
-                flat: true
+                iconButton: true
                 iconName: view.app.collapsed ? "arrow-down" : "arrow-up"
                 textColor: P.done
                 onClicked: view.app.collapsed = !view.app.collapsed
-            }
-        }
-
-        // ---------- Hilfe ----------
-        ColumnLayout {
-            visible: view.showHelp && !view.app.collapsed
-            Layout.fillWidth: true
-            Layout.bottomMargin: Kirigami.Units.smallSpacing
-            spacing: 2
-            Repeater {
-                model: [
-                    ["Klick auf das Kästchen", "abhaken (nochmal = rückgängig)"],
-                    ["Rechtsklick auf einen Punkt", "bearbeiten oder löschen"],
-                    ["+ Neuer Punkt", "auch überall mit Meta+Shift+T"],
-                    ["Seitenleiste", "Maus an den rechten Bildschirmrand"],
-                    ["Rechtsklick auf das Widget", "Anzeige wählen (Seitenleiste/Desktop) oder entfernen"],
-                    ["Verschieben auf dem Desktop", "Rechtsklick auf den Desktop → Bearbeitungsmodus"],
-                    ["Enter im Formular", "speichert sofort"],
-                    ["Büroklammer", "Notizen, Links, Dateien und Unteraufgaben"],
-                    ["Orange / Rot", "heute fällig / überfällig"],
-                    ["Titel „Todo“", "Liste in Obsidian öffnen"]
-                ]
-                delegate: PC3.Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    textFormat: Text.StyledText
-                    color: P.note
-                    text: "<b>" + modelData[0] + ":</b> " + modelData[1]
-                    font: Kirigami.Theme.smallFont
-                }
             }
         }
 
@@ -149,7 +124,7 @@ Rectangle {
                 Layout.topMargin: Kirigami.Units.smallSpacing
                 PC3.Label {
                     text: "+ Neuer Punkt"
-                    color: P.accent
+                    color: P.accent(Plasmoid.configuration.accent)
                     font.bold: true
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                     TapHandler { onTapped: view.app.openForm(null) }

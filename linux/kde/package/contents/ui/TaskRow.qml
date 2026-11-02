@@ -1,5 +1,6 @@
 // Ein Punkt der Liste: Kaestchen, Text, Termin, Unteraufgaben, aufklappbare Notizen (Windows-Look)
 import QtQuick
+import org.kde.plasma.plasmoid
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import org.kde.plasma.components as PC3
@@ -14,6 +15,7 @@ ColumnLayout {
     property string editKind: ""
     property int editLine: -1
     property string editOrig: ""
+    readonly property real fs: Plasmoid.configuration.fontScale
 
     spacing: 0
 
@@ -66,7 +68,7 @@ ColumnLayout {
                 readonly property real checkW: Kirigami.Units.gridUnit
                 text: taskRow.row.title
                 wrapMode: Text.WordWrap
-                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.1
+                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.1 * taskRow.fs
                 font.weight: Font.DemiBold
                 font.strikeout: taskRow.row.done
                 color: taskRow.row.done ? P.done : P.text
@@ -85,6 +87,7 @@ ColumnLayout {
                 PC3.Label {
                     text: taskRow.row.dueLabel
                     font.weight: Font.DemiBold
+                    font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * taskRow.fs
                     color: P.dueColor(taskRow.row.dueState)
                 }
             }
@@ -101,7 +104,7 @@ ColumnLayout {
                 flat: true
                 iconName: "mail-attachment"
                 text: taskRow.row.notes.length > 0 ? taskRow.row.notes.length : ""
-                textColor: taskRow.row.open ? P.accent : P.done
+                textColor: taskRow.row.open ? P.accent(Plasmoid.configuration.accent) : P.done
                 onClicked: taskRow.app.toggleNotes(taskRow.row.key)
             }
         }
@@ -124,6 +127,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 text: modelData.title + (modelData.dueLabel ? "  · " + modelData.dueLabel : "")
                 wrapMode: Text.WordWrap
+                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * taskRow.fs
                 font.strikeout: modelData.done
                 color: modelData.done ? P.done : P.note
                 TapHandler {
@@ -149,8 +153,9 @@ ColumnLayout {
                 visible: !(taskRow.editKind === "note" && taskRow.editLine === modelData.line)
                 text: modelData.text
                 wrapMode: Text.WordWrap
+                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 0.95 * taskRow.fs
                 font.underline: modelData.link !== ""
-                color: modelData.link !== "" ? P.accent : P.note
+                color: modelData.link !== "" ? P.accent(Plasmoid.configuration.accent) : P.note
                 HoverHandler { cursorShape: modelData.link !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor }
                 TapHandler {
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -169,7 +174,7 @@ ColumnLayout {
                 model: [["+ Notiz", "addnote"], ["+ Unteraufgabe", "addsub"], ["+ Datei", "file"]]
                 delegate: PC3.Label {
                     text: modelData[0]
-                    color: P.accent
+                    color: P.accent(Plasmoid.configuration.accent)
                     font: Kirigami.Theme.smallFont
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                     TapHandler {
@@ -193,7 +198,7 @@ ColumnLayout {
         bottomPadding: Kirigami.Units.smallSpacing * 2
         leftPadding: Kirigami.Units.largeSpacing
         placeholderText: taskRow.editKind === "addsub" || taskRow.editKind === "sub" ? "Unteraufgabe (Enter speichert, leer = löschen)" : "Notiz oder Link (Enter speichert, leer = löschen)"
-        background: Rectangle { radius: Kirigami.Units.gridUnit * 0.4; color: P.field; border.color: P.check; border.width: 1 }
+        background: Rectangle { radius: Kirigami.Units.gridUnit * 0.4; color: P.field; border.color: P.check(Plasmoid.configuration.accent); border.width: 1 }
         onAccepted: taskRow.finishEdit(true)
         Keys.onEscapePressed: taskRow.finishEdit(false)
         onActiveFocusChanged: if (!activeFocus && taskRow.editKind !== "") taskRow.finishEdit(false)
