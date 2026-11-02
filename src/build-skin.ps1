@@ -1223,6 +1223,16 @@ Parameter=/f /im TodoHotkey.exe
 State=Hide
 FinishAction=[!Refresh ObsidianTodo][!Delay 1500][!Refresh]
 
+; neues Tastenkuerzel aufnehmen (kleines Fenster), danach TodoHotkey neu starten
+[MeasureRecord]
+Measure=Plugin
+Plugin=RunCommand
+Program="#@#TodoHotkey.exe"
+Parameter=--record
+State=Hide
+Timeout=-1
+FinishAction=[!CommandMeasure MeasureKillHotkey "Run"]
+
 ; Todo-Datei waehlen (Dateidialog, schreibt settings.inc)
 [MeasureChoose]
 Measure=Plugin
@@ -1326,11 +1336,14 @@ $hini += Row 'Remind' 'Erinnerungen' $colR '22R' '#RemindOn#-#RemindLead#' @(
     @('Pünktlich', '^1-0$', "$(P RemindOn 1)$(P RemindLead 0)$refAll"),
     @('Aus', '^0-', "$(P RemindOn 0)$refAll"))
 $kill = '[!CommandMeasure MeasureKillHotkey "Run"]'
-$hini += Row 'Hotkey' 'Tastenkürzel für neuen Punkt' $colR '22R' '#HotkeyNow#' @(
-    @('Strg+Alt+T', '^Strg\+Alt\+T$', "$(P Hotkey ctrl+alt+t)$kill"),
-    @('Win+Shift+T', '^Win\+Shift\+T$', "$(P Hotkey win+shift+t)$kill"),
-    @('Strg+Shift+Leer', '^Strg\+Shift\+Leertaste$', "$(P Hotkey ctrl+shift+space)$kill"),
-    @('Aus', '^aus$', "$(P Hotkey aus)$kill"))
+# Tastenkuerzel: aktuelles anzeigen, "Aendern ..." nimmt ein neues auf (TodoHotkey.exe --record), "Zuruecksetzen" = Standard
+$hini += Caption 'CapHotkey' 'Tastenkürzel für neuen Punkt' $colR
+$hini += SetChip 'HotkeyNow1' $colR '10R' '#HotkeyNow#' '[!CommandMeasure MeasureRecord "Run"]' '#ColorText#' 11 190
+$hini += SetChip 'HotkeyRec' ($colR + 198) 'r' 'Ändern …' '[!CommandMeasure MeasureRecord "Run"]'
+$hini += SetChip 'HotkeyReset' ($colR + 206 + (BtnWidth 'Ändern …')) 'r' 'Zurücksetzen' "$(P Hotkey '')$kill"
+$hini += "[SelHotkeyNow]`r`nMeasure=String`r`nString=x`r`nIfMatch=x`r`nIfMatchAction=$($sel -f 'HotkeyNow1')`r`n`r`n"
+$hini += Spacer 'EndHotkey' $colR
+$hini += Small 'HotkeyInfo' 'Ändern: anklicken und die neue Kombination drücken (Esc = abbrechen).' $colR
 $hini += Caption 'CapFile' 'Todo-Datei' $colR
 $hini += Small 'FileNow' '#TodoFile#' $colR
 $hini += SetChip 'File1' $colR '10R' 'Andere Datei wählen …' '[!CommandMeasure MeasureChoose "Run"]'

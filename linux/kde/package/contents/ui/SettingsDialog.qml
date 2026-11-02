@@ -21,6 +21,45 @@ Window {
     width: body.width
     height: body.height
 
+    // ---------- Tastenkuerzel aufnehmen ----------
+    property bool recording: false
+    property string recPreview: ""
+    function niceKey(k) {
+        if (!k) return "keins";
+        return k.replace(/Ctrl/g, "Strg").replace(/Space/g, "Leertaste");
+    }
+    function startRecording() {
+        recording = true;
+        recPreview = "";
+        requestActivate();
+        body.forceActiveFocus();
+    }
+    function keyName(k) {
+        if (k >= Qt.Key_A && k <= Qt.Key_Z) return String.fromCharCode(k);
+        if (k >= Qt.Key_0 && k <= Qt.Key_9) return String.fromCharCode(k);
+        if (k >= Qt.Key_F1 && k <= Qt.Key_F35) return "F" + (k - Qt.Key_F1 + 1);
+        if (k === Qt.Key_Space) return "Space";
+        return "";
+    }
+    function recordKey(e) {
+        if (!recording) return false;
+        if (e.key === Qt.Key_Escape) { recording = false; return true; }
+        var mods = [];
+        if (e.modifiers & Qt.ControlModifier) mods.push("Ctrl");
+        if (e.modifiers & Qt.AltModifier) mods.push("Alt");
+        if (e.modifiers & Qt.ShiftModifier) mods.push("Shift");
+        if (e.modifiers & Qt.MetaModifier) mods.push("Meta");
+        var name = keyName(e.key);
+        if (!name) { recPreview = mods.length ? niceKey(mods.join("+")) + "+ …" : ""; return true; }
+        var strong = (e.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) || name.charAt(0) === "F" && name.length > 1;
+        if (!strong) { recPreview = "Mit Strg/Alt/Meta"; return true; }
+        mods.push(name);
+        app.setHotkey(mods.join("+"));
+        recording = false;
+        return true;
+    }
+    onVisibleChanged: if (!visible) recording = false
+
     function open() {
         visible = true;
         raise();
@@ -79,14 +118,15 @@ Window {
 
     Rectangle {
         id: body
-        width: Kirigami.Units.gridUnit * 40
+        width: Kirigami.Units.gridUnit * 46
         // auf kleinen Bildschirmen scrollbar statt abgeschnitten
         height: Math.min(content.implicitHeight + Kirigami.Units.largeSpacing * 3, Screen.desktopAvailableHeight - Kirigami.Units.gridUnit * 3)
         color: P.formBg
         radius: Kirigami.Units.gridUnit * 0.75
         Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
         Kirigami.Theme.inherit: false
-        Keys.onEscapePressed: dlg.visible = false
+        focus: true
+        Keys.onPressed: e => { if (dlg.recordKey(e)) e.accepted = true; else if (e.key === Qt.Key_Escape) dlg.visible = false; }
 
         FileDialog {
             id: fileDialog
@@ -210,11 +250,23 @@ Window {
                         current: dlg.cfg.remindOn ? dlg.cfg.remindLead : "aus"
                         onPicked: v => { if (v === "aus") dlg.cfg.remindOn = false; else { dlg.cfg.remindOn = true; dlg.cfg.remindLead = v; } }
                     }
-                    Setting {
-                        caption: "Tastenkürzel für neuen Punkt"
-                        options: [["Meta+Shift+T", "Meta+Shift+T"], ["Strg+Alt+N", "Ctrl+Alt+N"], ["Strg+Shift+Leer", "Ctrl+Shift+Space"], ["Aus", ""]]
-                        current: dlg.app.hotkey
-                        onPicked: v => dlg.app.setHotkey(v)
+                    // Tastenkuerzel: aktuelles anzeigen, "Aendern ..." nimmt die naechste Tastenkombination auf
+                    Setting { caption: "Tastenkürzel für neuen Punkt"; options: [] }
+                    RowLayout {
+                        Layout.topMargin: Kirigami.Units.smallSpacing
+                        spacing: Kirigami.Units.smallSpacing * 1.5
+                        Chip {
+                            selected: true
+                            Layout.preferredWidth: Kirigami.Units.gridUnit * 7.5
+                            text: dlg.recording ? (dlg.recPreview || "Tasten drücken …") : dlg.niceKey(dlg.app.hotkey)
+                            onClicked: dlg.startRecording()
+                        }
+                        Chip { text: "Ändern …"; onClicked: dlg.startRecording() }
+                        Chip { text: "Zurücksetzen"; onClicked: { dlg.recording = false; dlg.app.setHotkey("Meta+Shift+T"); } }
+                    }
+                    Small {
+                        text: dlg.recording ? "Jetzt die neue Kombination drücken (mit Strg, Alt oder Meta) · Esc = abbrechen"
+                                            : "Ändern: anklicken und die neue Kombination drücken (Esc = abbrechen)."
                     }
                     Setting {
                         caption: "Todo-Datei"
