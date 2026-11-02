@@ -17,6 +17,7 @@ SHORTCUT="Meta+Shift+T"
 CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/obsidian-todo"
 CONF="$CONF_DIR/config"
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/obsidian-todo"
+PLASMOID_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/plasma/plasmoids/$PLUGIN_ID"
 LOG="${TMPDIR:-/tmp}/obsidian-todo-setup.log"
 SILENT=0
 UNINSTALL=0
@@ -157,7 +158,7 @@ panels().forEach(function (p) {
     if (others === 0) p.remove();
 });
 desktops().forEach(function (d) { d.widgets(id).forEach(function (w) { w.remove(); }); });"
-    kpackagetool6 -t Plasma/Applet -r "$PLUGIN_ID" >/dev/null 2>&1
+    kpackagetool6 -t Plasma/Applet -r "$PLUGIN_ID" >/dev/null 2>&1 || rm -rf "$PLASMOID_DIR"
     rm -rf "$DATA_DIR" "$CONF_DIR"
     rm -f "$MENU_ENTRY" "${XDG_CONFIG_HOME:-$HOME/.config}/autostart/obsidian-todo-update.desktop"
     info "$APP wurde entfernt. Deine Todo.md und das Archiv sind noch da."
@@ -186,7 +187,8 @@ if [ -z "$PLASMA_VER" ] && command -v plasmashell >/dev/null 2>&1; then
     ldd "$(command -v plasmashell)" 2>/dev/null | grep -q 'libQt6Core\.so' && PLASMA_VER=6
 fi
 [ "${PLASMA_VER%%.*}" -ge 6 ] 2>/dev/null || fail "Benötigt KDE Plasma 6 (gefunden: ${PLASMA_VER:-keins})."
-command -v kpackagetool6 >/dev/null 2>&1 || fail "kpackagetool6 fehlt (Paket kpackagetool6 bzw. kpackage)."
+# kpackagetool6 ist nicht ueberall installiert (z. B. Kubuntu) - dann wird das Widget direkt kopiert
+HAVE_KPT=0; command -v kpackagetool6 >/dev/null 2>&1 && HAVE_KPT=1
 
 # ---------- Obsidian finden ----------
 OBS_CONFIGS=(
@@ -380,11 +382,19 @@ EOF
 
 # ---------- Widget installieren ----------
 FIRST_INSTALL=1
-if kpackagetool6 -t Plasma/Applet -s "$PLUGIN_ID" >/dev/null 2>&1 || kpackagetool6 -t Plasma/Applet -l 2>/dev/null | grep -qx "$PLUGIN_ID"; then
-    FIRST_INSTALL=0
-    kpackagetool6 -t Plasma/Applet -u "$PKG" >>"$LOG" 2>&1 || fail "Widget konnte nicht aktualisiert werden (Details: $LOG)."
+[ -f "$PLASMOID_DIR/metadata.json" ] && FIRST_INSTALL=0
+if [ "$HAVE_KPT" = 1 ]; then
+    if [ "$FIRST_INSTALL" = 0 ] || kpackagetool6 -t Plasma/Applet -s "$PLUGIN_ID" >/dev/null 2>&1; then
+        FIRST_INSTALL=0
+        kpackagetool6 -t Plasma/Applet -u "$PKG" >>"$LOG" 2>&1 || fail "Widget konnte nicht aktualisiert werden (Details: $LOG)."
+    else
+        kpackagetool6 -t Plasma/Applet -i "$PKG" >>"$LOG" 2>&1 || fail "Widget konnte nicht installiert werden (Details: $LOG)."
+    fi
 else
-    kpackagetool6 -t Plasma/Applet -i "$PKG" >>"$LOG" 2>&1 || fail "Widget konnte nicht installiert werden (Details: $LOG)."
+    # ohne kpackagetool6: genau dorthin kopieren, wo es kpackagetool6 auch hinlegt
+    log "kpackagetool6 fehlt - Widget wird direkt nach $PLASMOID_DIR kopiert"
+    rm -rf "$PLASMOID_DIR" && mkdir -p "$(dirname "$PLASMOID_DIR")" && cp -r "$PKG" "$PLASMOID_DIR" \
+        || fail "Widget konnte nicht installiert werden (Details: $LOG)."
 fi
 
 # Updates

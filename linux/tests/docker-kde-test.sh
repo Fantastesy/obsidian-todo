@@ -12,7 +12,7 @@ setup="${1:-$(ls "$root"/dist/ObsidianTodo-KDE-Setup-*.sh | tail -1)}"
 prefix="${2:-kde}"
 out="$root/linux/tests"
 c=obsidian-todo-kde
-img=lscr.io/linuxserver/webtop:fedora-kde
+img="${IMG:-lscr.io/linuxserver/webtop:fedora-kde}"   # IMG=lscr.io/linuxserver/webtop:ubuntu-kde fuer Kubuntu
 command -v docker >/dev/null || export PATH="/h/Windows stuff/Docker Desktop/resources/bin:$PATH"
 
 dist_win="$(cd "$(dirname "$setup")" && pwd -W 2>/dev/null || pwd)"
@@ -24,7 +24,7 @@ sleep 15   # Plasma fertig starten lassen
 
 # Hilfsprogramme im Container: Befehle in der Plasma-Sitzung ausfuehren, Screenshots (Spectacle, Wayland)
 docker exec $c bash -c '
-dnf install -y -q spectacle sudo >/dev/null 2>&1
+if command -v dnf >/dev/null; then dnf install -y -q spectacle sudo >/dev/null 2>&1; else apt-get update -qq >/dev/null 2>&1; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq kde-spectacle sudo >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq spectacle sudo >/dev/null 2>&1; fi
 cat > /usr/local/bin/insession-inner <<"EOF"
 #!/bin/bash
 p=$(pgrep -u "$(id -u)" -x plasmashell | head -1)

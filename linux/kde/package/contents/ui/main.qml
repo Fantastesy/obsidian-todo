@@ -96,7 +96,7 @@ PlasmoidItem {
     function hoverLeft() { if (inPanel) { if (autoOpened && !revealed) closeTimer.restart(); } else side.leave(); }
     function hoverEntered() { closeTimer.stop(); side.enter(); }
     Timer { id: closeTimer; interval: 900; onTriggered: { if (root.autoOpened) { root.expanded = false; root.autoOpened = false; } } }
-    onExpandedChanged: if (!expanded) autoOpened = false
+    onExpandedChanged: if (!root.expanded) root.autoOpened = false
     Timer { id: revealTimer; onTriggered: { root.revealed = false; if (root.autoOpened) { root.expanded = false; root.autoOpened = false; } } }
 
     // Aufwachen: waehrend Standby laufen keine Timer -> grosse Luecke zwischen zwei Durchlaeufen
@@ -247,7 +247,7 @@ PlasmoidItem {
 
     // ---------- Einstellungen laden ----------
     function loadConfig() {
-        run('printf "HOME=%s\\n" "$HOME"; cat "$HOME/.config/obsidian-todo/config" 2>/dev/null; command -v notify-send >/dev/null && echo NOTIFY=1; printf "TEST=%s\\n" "$OBSIDIAN_TODO_TEST"; printf "APPVERSION=%s\\n" "$(head -n1 "${XDG_DATA_HOME:-$HOME/.local/share}/obsidian-todo/version.txt" 2>/dev/null)"',
+        run('printf "HOME=%s\\n" "$HOME"; cat "$HOME/.config/obsidian-todo/config" 2>/dev/null; command -v notify-send >/dev/null && echo NOTIFY=1; printf "TEST=%s\\n" "$OBSIDIAN_TODO_TEST"; [ -f /tmp/obsidian-todo-test.enable ] && echo TESTCMD=1; printf "APPVERSION=%s\\n" "$(head -n1 "${XDG_DATA_HOME:-$HOME/.local/share}/obsidian-todo/version.txt" 2>/dev/null)"',
             function (code, out) {
                 var cfg = {};
                 out.split("\n").forEach(function (l) {
