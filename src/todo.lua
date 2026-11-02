@@ -450,7 +450,11 @@ local function render(openCount, doneCount)
 			end
 
 			SKIN:Bang('!SetOption', 'Clip' .. i, 'Text', clipIcon .. (count > 0 and (' ' .. count) or ''))
-			SKIN:Bang('!SetOption', 'Clip' .. i, 'Y', y)
+			-- Knopf mittig in der ersten Zeile des Punkts, Symbol + Anzahl darauf zentriert
+			local by = y + math.floor((rowH - 30) / 2)
+			SKIN:Bang('!SetOption', 'Clip' .. i .. 'Btn', 'Y', by)
+			SKIN:Bang('!ShowMeter', 'Clip' .. i .. 'Btn')
+			SKIN:Bang('!SetOption', 'Clip' .. i, 'Y', by + 4)
 			SKIN:Bang('!SetOption', 'Clip' .. i, 'FontColor', open and v.colLink or v.colDone)
 			SKIN:Bang('!ShowMeter', 'Clip' .. i)
 			y = y + heightOf(m, rowH)
@@ -495,7 +499,7 @@ local function render(openCount, doneCount)
 			if #t.subs > 0 and not open then y = y + 4 end
 		else
 			hideCheck(m)
-			for _, p in ipairs({ 'Clip' .. i, 'Progress' .. i, 'NoteAdd' .. i, 'SubAdd' .. i, 'FileAdd' .. i }) do
+			for _, p in ipairs({ 'Clip' .. i, 'Clip' .. i .. 'Btn', 'Progress' .. i, 'NoteAdd' .. i, 'SubAdd' .. i, 'FileAdd' .. i }) do
 				SKIN:Bang('!HideMeter', p)
 			end
 		end

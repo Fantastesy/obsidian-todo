@@ -12,6 +12,25 @@ $cal = [char]0xE787      # Calendar
 $rep = [char]0xE8EE      # RepeatAll (wiederkehrend)
 $gear = [char]0xE713     # Setting (Zahnrad)
 $close = [char]0xE711    # Cancel (X)
+
+# Symbol-Knopf in der Liste: abgerundete, dunkle Flaeche mit Rand (das Symbol liegt als eigener String-Meter
+# darueber und hat keine Maus-Aktionen, damit Klicks auf die Flaeche durchgehen)
+function IconBtn($name, $x, $y, $h, $action, $w = 0) {
+    if (-not $w) { $w = $h }
+    $rect = "Rectangle 0.5,0.5,$($w - 1),$($h - 1),7 | StrokeWidth 1 | Stroke Color #ColorBtnStroke# | Fill Color"
+@"
+[${name}Btn]
+Meter=Shape
+X=$x
+Y=$y
+DynamicVariables=1
+Shape=$rect #ColorBtnFill#
+MouseOverAction=[!SetOption ${name}Btn Shape "$rect #ColorBtnHover#"][!UpdateMeter ${name}Btn][!Redraw]
+MouseLeaveAction=[!SetOption ${name}Btn Shape "$rect #ColorBtnFill#"][!UpdateMeter ${name}Btn][!Redraw]
+LeftMouseUpAction=$action
+
+"@
+}
 $foldUp = [char]0xE70E   # ChevronUp (Liste offen -> einklappen)
 $foldDown = [char]0xE70D # ChevronDown (Liste zu -> ausklappen)
 $obs = '["obsidian://open?path=#TodoUrl#"]'
@@ -63,6 +82,10 @@ AutoUpdate=1
 Hotkey=
 Accent=lila
 Opacity=218
+; Symbol-Knoepfe (Zahnrad, Pfeil, Bueroklammer): dunkler und deckender als die Liste
+ColorBtnFill=22,22,30,235
+ColorBtnHover=48,48,62,245
+ColorBtnStroke=255,255,255,48
 RowH=36
 NoteH=30
 ListTop=62
@@ -211,43 +234,31 @@ AntiAlias=1
 Text=
 
 ; Zahnrad neben dem Titel: Einstellungen ein-/ausblenden
+$(IconBtn 'Gear' 84 14 32 '[!ToggleConfig "ObsidianTodo\Einstellungen" "Einstellungen.ini"]')
 [MeterHelp]
 Meter=String
-X=78
-Y=14
-W=38
-H=38
-Padding=10,10,0,0
+X=100
+Y=30
+StringAlign=CenterCenter
 FontFace=#IconFace#
 FontSize=(#FontSize#-2)
 FontColor=#ColorDone#
-SolidColor=0,0,0,1
 AntiAlias=1
 Text=$gear
-ToolTipText=Einstellungen und Hilfe
-LeftMouseUpAction=[!ToggleConfig "ObsidianTodo\Einstellungen" "Einstellungen.ini"]
-MouseOverAction=[!SetOption MeterHelp SolidColor "#ColorHover#"][!UpdateMeter MeterHelp][!Redraw]
-MouseLeaveAction=[!SetOption MeterHelp SolidColor "0,0,0,1"][!UpdateMeter MeterHelp][!Redraw]
 
-; Pfeil zum Ein-/Ausklappen der ganzen Liste
+; Pfeil zum Ein-/Ausklappen der ganzen Liste (ohne Tooltip: der bliebe beim Herein-/Hinausfahren stehen)
+$(IconBtn 'Fold' '(#Width#-50)' 14 32 '[!CommandMeasure MeasureTodo "ToggleCollapse()"]')
 [MeterFold]
 Meter=String
 DynamicVariables=1
-X=(#Width#-56)
-Y=12
-W=44
-H=40
-Padding=12,10,0,0
+X=(#Width#-34)
+Y=30
+StringAlign=CenterCenter
 FontFace=#IconFace#
 FontSize=(#FontSize#-3)
 FontColor=#ColorDone#
-SolidColor=0,0,0,1
 AntiAlias=1
 Text=#FoldOpen#
-ToolTipText=Liste ein-/ausklappen
-LeftMouseUpAction=[!CommandMeasure MeasureTodo "ToggleCollapse()"]
-MouseOverAction=[!SetOption MeterFold SolidColor "#ColorHover#"][!UpdateMeter MeterFold][!Redraw]
-MouseLeaveAction=[!SetOption MeterFold SolidColor "0,0,0,1"][!UpdateMeter MeterFold][!Redraw]
 
 
 "@
@@ -338,29 +349,25 @@ FontColor=#ColorDone#
 AntiAlias=1
 Text=
 
+$((IconBtn "Clip$i" '(#Width#-66)' 0 30 "[!CommandMeasure MeasureTodo `"ToggleNotes($i)`"]" 52).Replace('Meter=Shape', "Meter=Shape`r`nHidden=1"))
+; Bueroklammer + Anzahl, mittig auf ClipBtn$i (Y setzt todo.lua)
 [Clip$i]
 Meter=String
 DynamicVariables=1
 Hidden=1
-X=(#Width#-82)
+X=(#Width#-40)
 Y=0
-Padding=4,6,4,0
-H=#RowH#
-StringAlign=Left
+StringAlign=Center
 FontFace=#FontFace#
 FontSize=(#FontSize#-1)
 FontWeight=500
 FontColor=#ColorDone#
-SolidColor=0,0,0,1
 AntiAlias=1
 InlinePattern=^(.)
 InlineSetting=Face | #IconFace#
 InlinePattern2=^(.)
 InlineSetting2=Size | (#FontSize#+1)
 Text=
-LeftMouseUpAction=[!CommandMeasure MeasureTodo "ToggleNotes($i)"]
-MouseOverAction=[!SetOption Clip$i SolidColor "#ColorHover#"][!UpdateMeter Clip$i][!Redraw]
-MouseLeaveAction=[!SetOption Clip$i SolidColor "0,0,0,1"][!UpdateMeter Clip$i][!Redraw]
 
 [NoteAdd$i]
 Meter=String
