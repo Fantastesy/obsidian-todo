@@ -33,11 +33,10 @@ Item {
     function show() { if (active) { leaveTimer.stop(); shown = true; } }
     function hide() { leaveTimer.stop(); revealTimer.stop(); revealing = false; shown = false; }
     // Maus am Rand
-    function edgeHit() {
-        show();
-        // falls die Maus gar nicht ins Panel geht, trotzdem wieder hinaus
-        if (!mouseInside) leaveTimer.restart();
-    }
+    // solange die Maus am Rand bleibt, bleibt die Liste offen; erst wenn sie Rand und Liste verlaesst, hinaus
+    property bool onEdge: false
+    function edgeHit() { onEdge = true; leaveTimer.stop(); show(); }
+    function edgeLeft() { onEdge = false; if (shown && !mouseInside && !revealing) leaveTimer.restart(); }
     function enter() { mouseInside = true; leaveTimer.stop(); }
     function leave() { mouseInside = false; if (shown && !revealing) leaveTimer.restart(); }
     // Einblenden (Anmelden/Aufwachen/Entsperren) fuer so viele Sekunden
@@ -48,7 +47,7 @@ Item {
         revealTimer.interval = seconds * 1000;
         revealTimer.restart();
     }
-    function revealEnd() { revealing = false; if (!mouseInside) leaveTimer.restart(); }
+    function revealEnd() { revealing = false; if (!mouseInside && !onEdge) leaveTimer.restart(); }
 
     onActiveChanged: { if (!active) hide(); placeEdge(); }
     onOnLeftChanged: placeEdge()
@@ -74,9 +73,9 @@ Item {
 
     Timer {
         id: leaveTimer
-        interval: side.leaveMs + (side.mouseInside ? 0 : 1000)
+        interval: side.leaveMs
         // waehrend in der Liste getippt wird oder ein Dateidialog offen ist, nicht wegfahren
-        onTriggered: if (side.app.editing) restart(); else if (!side.mouseInside && !side.revealing) side.shown = false
+        onTriggered: if (side.app.editing) restart(); else if (!side.mouseInside && !side.onEdge && !side.revealing) side.shown = false
     }
     Timer { id: revealTimer; onTriggered: side.revealEnd() }
 
@@ -96,7 +95,7 @@ Item {
             height: side.area.height
             // fast durchsichtig: ganz durchsichtige Flaechen bemerkt die Maus nicht ueberall
             Rectangle { anchors.fill: parent; color: side.debugEdge ? "red" : "#02000000" }
-            HoverHandler { onHoveredChanged: if (hovered) side.edgeHit() }
+            HoverHandler { onHoveredChanged: hovered ? side.edgeHit() : side.edgeLeft() }
         }
     }
 
@@ -117,6 +116,8 @@ Item {
             width: side.panelW
             height: side.area.height - 2 * side.margin
             clip: true
+            // ganzes Panel-Fenster (bis an den Bildschirmrand) zaehlt als "Maus in der Liste"
+            HoverHandler { onHoveredChanged: hovered ? side.enter() : side.leave() }
             TodoView {
                 width: Plasmoid.configuration.listWidth
                 height: parent.height

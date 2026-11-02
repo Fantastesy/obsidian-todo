@@ -147,18 +147,27 @@ function Update()
 end
 
 -- ---------- Aufrufe ----------
--- Maus beruehrt den Rand
+-- Maus beruehrt den Rand: hereinfahren; solange sie am Rand bleibt, bleibt die Liste offen
+local onEdge, inList = false, false
 function EdgeHit()
+	onEdge = true
+	leaveAt = nil
 	slideIn()
-	-- falls die Maus gar nicht in die Liste geht, trotzdem wieder hinaus
-	leaveAt = os.time() + leaveDelay + 1
+end
+-- Maus hat den Rand verlassen (MeterEdge MouseLeaveAction): ist sie nicht in die Liste gewandert, hinaus
+function EdgeLeave()
+	onEdge = false
+	if not inList and state ~= 'hidden' then leaveAt = os.time() + leaveDelay end
 end
 -- Maus in der Liste (aus Todo.ini, [Rainmeter] MouseOverAction)
-function Enter() leaveAt = nil end
--- Maus hat die Liste verlassen (bei 0 Sekunden Wartezeit: beim naechsten Durchlauf)
-function Leave() if state ~= 'hidden' then leaveAt = os.time() + leaveDelay end end
+function Enter() inList = true; leaveAt = nil end
+-- Maus hat die Liste verlassen (bei 0 Sekunden Wartezeit: beim naechsten Durchlauf); am Rand bleibt sie offen
+function Leave()
+	inList = false
+	if state ~= 'hidden' and not onEdge then leaveAt = os.time() + leaveDelay end
+end
 -- Einblenden beim Anmelden/Aufwachen/Entsperren (todo.lua bestimmt die Dauer)
 function Reveal() revealing = true; leaveAt = nil; slideIn() end
-function RevealEnd() revealing = false; leaveAt = os.time() + leaveDelay end
+function RevealEnd() revealing = false; if not inList and not onEdge then leaveAt = os.time() + leaveDelay end end
 -- sofort hinaus (z. B. Knopf "Ausblenden")
 function Out() revealing = false; leaveAt = nil; slideOut() end

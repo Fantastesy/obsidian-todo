@@ -1424,6 +1424,7 @@ W=1
 H=1080
 SolidColor=0,0,0,1
 MouseOverAction=[!CommandMeasure MeasureSide "EdgeHit()"]
+MouseLeaveAction=[!CommandMeasure MeasureSide "EdgeLeave()"]
 "@
 New-Item -ItemType Directory -Force "$skin\Rand" | Out-Null
 [IO.File]::WriteAllText("$skin\Rand\Rand.ini", $rand, [Text.Encoding]::Unicode)

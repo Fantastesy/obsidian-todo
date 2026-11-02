@@ -67,10 +67,6 @@ Rectangle {
     Layout.preferredHeight: implicitHeight
     Layout.minimumHeight: implicitHeight
 
-    HoverHandler {
-        enabled: view.inPanel
-        onHoveredChanged: hovered ? view.app.hoverEntered() : view.app.hoverLeft()
-    }
 
     ColumnLayout {
         id: col
