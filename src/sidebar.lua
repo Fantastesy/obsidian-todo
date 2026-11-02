@@ -14,6 +14,7 @@
 
 local LIST = 'ObsidianTodo'
 local MARGIN = 8           -- Abstand zum Bildschirmrand oben, unten und seitlich (wie eine schwebende KDE-Leiste)
+local EDGE_FREE = 0.2      -- Anteil der Hoehe oben und unten ohne Rand-Streifen (Ecken loesen nichts aus)
 local SPEEDS = {           -- Bilder fuer die Animation, Sekunden bis zum Hinausfahren nach Maus-weg
 	fast = { frames = 7, leave = 0 },
 	normal = { frames = 12, leave = 1 },
@@ -39,10 +40,13 @@ function Initialize()
 	left = num('WORKAREAX', 0)
 	right = left + num('WORKAREAWIDTH', 1920)
 	top = num('WORKAREAY', 0)
-	-- Streifen an den Rand, ueber die volle Hoehe; letzte Pixelspalte (dort bleibt die Maus haengen)
-	SKIN:Bang('!SetOption', 'MeterEdge', 'H', num('WORKAREAHEIGHT', 1080))
+	-- Streifen an den Rand, nur im mittleren Teil der Hoehe (Ecken mit Schliessen-Knoepfen, Uhr usw. bleiben frei);
+	-- letzte Pixelspalte (dort bleibt die Maus haengen)
+	local h = num('WORKAREAHEIGHT', 1080)
+	local free = math.floor(h * EDGE_FREE)
+	SKIN:Bang('!SetOption', 'MeterEdge', 'H', h - 2 * free)
 	SKIN:Bang('!UpdateMeter', 'MeterEdge')
-	SKIN:Bang('!Move', side == 'left' and left or right - 1, top)
+	SKIN:Bang('!Move', side == 'left' and left or right - 1, top + free)
 end
 
 -- Position der Liste fuer einen Fortschritt p (0 = draussen, 1 = ganz drin), sanft abbremsend

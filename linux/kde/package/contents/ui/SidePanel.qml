@@ -89,10 +89,11 @@ Item {
         backgroundHints: PlasmaCore.Types.NoBackground
         hideOnWindowDeactivate: false
         x: side.onLeft ? side.gx : side.gx + side.area.width - 1
-        y: side.gy
+        // nur der mittlere Teil des Rands: oben und unten je 20 % frei (Ecken loesen nichts aus)
+        y: side.gy + Math.floor(side.area.height * 0.2)
         mainItem: Item {
             width: 1
-            height: side.area.height
+            height: side.area.height - 2 * Math.floor(side.area.height * 0.2)
             // fast durchsichtig: ganz durchsichtige Flaechen bemerkt die Maus nicht ueberall
             Rectangle { anchors.fill: parent; color: side.debugEdge ? "red" : "#02000000" }
             HoverHandler { onHoveredChanged: hovered ? side.edgeHit() : side.edgeLeft() }
