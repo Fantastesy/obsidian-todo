@@ -9,21 +9,21 @@ import org.kde.plasma.components as PC3
 import org.kde.kirigami as Kirigami
 import "../code/palette.js" as P
 
-PlasmaCore.Dialog {
+// normales randloses Fenster (kein Plasma-Dialog): nur so laesst KDE es an der Titelzeile verschieben
+Window {
     id: dlg
     property var app
     readonly property var cfg: Plasmoid.configuration
 
-    location: PlasmaCore.Types.Floating
-    type: PlasmaCore.Dialog.Normal
-    flags: Qt.WindowStaysOnTopHint
-    hideOnWindowDeactivate: false
-    backgroundHints: PlasmaCore.Types.NoBackground
+    title: "Obsidian Todo – Einstellungen"
+    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
+    color: "transparent"
+    width: body.width
+    height: body.height
 
     function open() {
         visible = true;
-        x = Screen.virtualX + Math.round((Screen.width - width) / 2);
-        y = Screen.virtualY + Math.round((Screen.height - height) / 2);
+        raise();
         requestActivate();
     }
 
@@ -37,12 +37,11 @@ PlasmaCore.Dialog {
         signal picked(var value)
         spacing: Kirigami.Units.smallSpacing
         Layout.fillWidth: true
-        Layout.topMargin: Kirigami.Units.largeSpacing
+        Layout.topMargin: Kirigami.Units.smallSpacing * 3
         PC3.Label {
             text: s.caption
             color: P.accent(dlg.cfg.accent)
-            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.15
-            font.bold: true
+            font.weight: Font.DemiBold
         }
         Flow {
             Layout.fillWidth: true
@@ -63,6 +62,13 @@ PlasmaCore.Dialog {
             }
         }
     }
+    component Group: PC3.Label {
+        Layout.topMargin: Kirigami.Units.smallSpacing * 2
+        color: P.done
+        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+        font.weight: Font.DemiBold
+        font.letterSpacing: 1.5
+    }
     component Small: PC3.Label {
         Layout.fillWidth: true
         wrapMode: Text.WordWrap
@@ -71,9 +77,9 @@ PlasmaCore.Dialog {
     }
 
 
-    mainItem: Rectangle {
+    Rectangle {
         id: body
-        width: Kirigami.Units.gridUnit * 50
+        width: Kirigami.Units.gridUnit * 40
         // auf kleinen Bildschirmen scrollbar statt abgeschnitten
         height: Math.min(content.implicitHeight + Kirigami.Units.largeSpacing * 3, Screen.desktopAvailableHeight - Kirigami.Units.gridUnit * 3)
         color: P.formBg
@@ -108,15 +114,24 @@ PlasmaCore.Dialog {
             RowLayout {
                 Layout.fillWidth: true
                 // an der Titelzeile ziehen = Fenster verschieben (KDE uebernimmt das Ziehen)
-                DragHandler { target: null; onActiveChanged: if (active) dlg.startSystemMove() }
-                HoverHandler { cursorShape: Qt.SizeAllCursor }
                 PC3.Label {
                     text: "Einstellungen"
                     color: P.text
-                    font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.5
-                    font.bold: true
+                    font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.3
+                    font.weight: Font.DemiBold
                 }
-                Item { Layout.fillWidth: true }
+                // Titelzeile ziehen = Fenster verschieben
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.leftMargin: -Kirigami.Units.gridUnit * 10   // auch ueber dem Titel
+                        preventStealing: true
+                        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.SizeAllCursor
+                        onPressed: dlg.startSystemMove()
+                    }
+                }
                 Chip { iconButton: true; iconName: "window-close"; textColor: P.done; onClicked: dlg.visible = false }
             }
 
@@ -129,6 +144,7 @@ PlasmaCore.Dialog {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignTop
                     spacing: 0
+                    Group { text: "AUSSEHEN" }
                     Setting {
                         caption: "Anzeige"
                         options: [["Seitenleiste", "sidebar"], ["Desktop", "desktop"], ["Beides", "both"]]
@@ -138,21 +154,27 @@ PlasmaCore.Dialog {
                     Small { text: "Seitenleiste: gleitet am Bildschirmrand herein. Desktop: liegt auf dem Hintergrund. Beides: liegt auf dem Desktop und gleitet am Rand als Seitenleiste herein." }
                     Setting {
                         caption: "Seite"
-                        options: [["Rechts", "right"], ["Links", "left"]]
+                        options: [["Links", "left"], ["Rechts", "right"]]
                         current: dlg.cfg.side
                         onPicked: v => dlg.cfg.side = v
                     }
                     Setting {
                         caption: "Breite"
-                        options: [["Schmal", 380], ["Normal", 460], ["Breit", 560]]
+                        options: [["Breit", 560], ["Normal", 460], ["Schmal", 380]]
                         current: dlg.cfg.listWidth
                         onPicked: v => dlg.cfg.listWidth = v
                     }
                     Setting {
                         caption: "Schriftgröße"
-                        options: [["Klein", 0.9], ["Normal", 1], ["Groß", 1.15]]
+                        options: [["Groß", 1.15], ["Normal", 1], ["Klein", 0.9]]
                         current: dlg.cfg.fontScale
                         onPicked: v => dlg.cfg.fontScale = v
+                    }
+                    Setting {
+                        caption: "Hintergrund"
+                        options: [["Deckend", 250], ["Normal", 218], ["Leicht", 190], ["Durchsichtig", 150]]
+                        current: dlg.cfg.opacity
+                        onPicked: v => dlg.cfg.opacity = v
                     }
                     Setting {
                         caption: "Akzentfarbe"
@@ -161,12 +183,6 @@ PlasmaCore.Dialog {
                         current: dlg.cfg.accent
                         onPicked: v => dlg.cfg.accent = v
                     }
-                    Setting {
-                        caption: "Hintergrund"
-                        options: [["Durchsichtig", 150], ["Leicht", 190], ["Normal", 218], ["Deckend", 250]]
-                        current: dlg.cfg.opacity
-                        onPicked: v => dlg.cfg.opacity = v
-                    }
                 }
                 // ----- rechte Spalte: Verhalten -----
                 ColumnLayout {
@@ -174,6 +190,7 @@ PlasmaCore.Dialog {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignTop
                     spacing: 0
+                    Group { text: "VERHALTEN" }
                     Setting {
                         caption: "Tempo der Seitenleiste"
                         options: [["Schnell", "fast"], ["Normal", "normal"], ["Gemütlich", "slow"]]
@@ -182,14 +199,14 @@ PlasmaCore.Dialog {
                     }
                     Setting {
                         caption: "Beim Anmelden/Aufwachen einblenden"
-                        options: [["Aus", 0], ["5 s", 5], ["10 s", 10], ["20 s", 20]]
+                        options: [["20 s", 20], ["10 s", 10], ["5 s", 5], ["Aus", 0]]
                         current: dlg.cfg.revealPerItem
                         onPicked: v => dlg.cfg.revealPerItem = v
                     }
                     Small { text: "Sekunden pro offenem Punkt (höchstens 2 Minuten)." }
                     Setting {
                         caption: "Erinnerungen"
-                        options: [["Aus", "aus"], ["Pünktlich", 0], ["5 Min vorher", 5], ["15 Min vorher", 15]]
+                        options: [["15 Min vorher", 15], ["5 Min vorher", 5], ["Pünktlich", 0], ["Aus", "aus"]]
                         current: dlg.cfg.remindOn ? dlg.cfg.remindLead : "aus"
                         onPicked: v => { if (v === "aus") dlg.cfg.remindOn = false; else { dlg.cfg.remindOn = true; dlg.cfg.remindLead = v; } }
                     }
@@ -223,8 +240,7 @@ PlasmaCore.Dialog {
                 Layout.topMargin: Kirigami.Units.gridUnit * 1.5
                 text: "So funktioniert's"
                 color: P.accent(dlg.cfg.accent)
-                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.15
-                font.bold: true
+                font.weight: Font.DemiBold
             }
             Repeater {
                 model: [
@@ -244,8 +260,9 @@ PlasmaCore.Dialog {
                     Layout.topMargin: 2
                     wrapMode: Text.WordWrap
                     textFormat: Text.StyledText
+                    font: Kirigami.Theme.smallFont
                     color: P.note
-                    text: "<b><font color='#FFFFFF'>" + modelData[0] + ":</font></b> " + modelData[1]
+                    text: "<font color='#FFFFFF'>" + modelData[0] + ":</font> " + modelData[1]
                 }
             }
             RowLayout {

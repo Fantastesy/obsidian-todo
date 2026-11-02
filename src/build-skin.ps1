@@ -1105,6 +1105,21 @@ Text=$text
 
 "@
 }
+# kleine Gruppen-Ueberschrift (AUSSEHEN / VERHALTEN) ueber einer Spalte
+function GroupHead($name, $text, $x) {
+"[$name]
+Meter=String
+X=$x
+Y=60
+FontFace=#FontFace#
+FontSize=9
+FontWeight=600
+FontColor=#ColorDone#
+AntiAlias=1
+Text=$text
+
+"
+}
 function Small($name, $text, $x, $y = '8R') {
 @"
 [$name]
@@ -1247,22 +1262,28 @@ MouseLeaveAction=[!SetOption MeterClose SolidColor "0,0,0,1"][!UpdateMeter Meter
 "@
 
 # ----- linke Spalte: Aussehen -----
-$hini += Row 'Mode' 'Anzeige' $colL 62 '#Mode#' @(
+$hini += GroupHead 'GrpLook' 'AUSSEHEN' $colL
+$hini += Row 'Mode' 'Anzeige' $colL '12R' '#Mode#' @(
     @('Seitenleiste', '^sidebar$', "$(P Mode sidebar)$refAll"),
     @('Desktop', '^desktop$', "$(P Mode desktop)$refAll"),
     @('Beides', '^both$', "$(P Mode both)$refAll"))
 $hini += Small 'ModeInfo' 'Seitenleiste: fährt am Bildschirmrand herein. Desktop: liegt auf dem Hintergrund. Beides: liegt auf dem Desktop und fährt am Rand als Seitenleiste herein.' $colL
 $hini += Row 'Side' 'Seite' $colL '22R' '#Side#' @(
-    @('Rechts', '^right$', "$(P Side right)$refAll"),
-    @('Links', '^left$', "$(P Side left)$refAll"))
+    @('Links', '^left$', "$(P Side left)$refAll"),
+    @('Rechts', '^right$', "$(P Side right)$refAll"))
 $hini += Row 'Width' 'Breite' $colL '22R' '#Width#' @(
-    @('Schmal', '^380$', "$(P Width 380)$refAll"),
+    @('Breit', '^560$', "$(P Width 560)$refAll"),
     @('Normal', '^460$', "$(P Width 460)$refAll"),
-    @('Breit', '^560$', "$(P Width 560)$refAll"))
+    @('Schmal', '^380$', "$(P Width 380)$refAll"))
 $hini += Row 'Font' 'Schriftgröße' $colL '22R' '#FontSize#' @(
-    @('Klein', '^12$', "$(P FontSize 12)$(P RowH 32)$(P NoteH 28)$refAll"),
+    @('Groß', '^15$', "$(P FontSize 15)$(P RowH 40)$(P NoteH 34)$refAll"),
     @('Normal', '^13$', "$(P FontSize 13)$(P RowH 36)$(P NoteH 30)$refAll"),
-    @('Groß', '^15$', "$(P FontSize 15)$(P RowH 40)$(P NoteH 34)$refAll"))
+    @('Klein', '^12$', "$(P FontSize 12)$(P RowH 32)$(P NoteH 28)$refAll"))
+$hini += Row 'Opacity' 'Hintergrund' $colL '22R' '#Opacity#' @(
+    @('Deckend', '^250$', "$(P Opacity 250)$refAll"),
+    @('Normal', '^218$', "$(P Opacity 218)$refAll"),
+    @('Leicht', '^190$', "$(P Opacity 190)$refAll"),
+    @('Durchsichtig', '^150$', "$(P Opacity 150)$refAll"))
 # Akzentfarbe: Kaestchen, Knoepfe (ColorCheck) und Links/Ueberschriften (ColorAccent)
 $accents = @(
     @('lila', '138,108,245,255', '165,185,255,255'),
@@ -1276,29 +1297,25 @@ foreach ($a in $accents) {
     $opts += , @([string][char]0x25CF, "^$($a[0])$", "$(C Accent $a[0])$(C ColorCheck $a[1])$(C ColorAccent $a[2])$refAll", $a[1], 17)
 }
 $hini += Row 'Accent' 'Akzentfarbe' $colL '22R' '#Accent#' $opts
-$hini += Row 'Opacity' 'Hintergrund' $colL '22R' '#Opacity#' @(
-    @('Durchsichtig', '^150$', "$(P Opacity 150)$refAll"),
-    @('Leicht', '^190$', "$(P Opacity 190)$refAll"),
-    @('Normal', '^218$', "$(P Opacity 218)$refAll"),
-    @('Deckend', '^250$', "$(P Opacity 250)$refAll"))
 $hini += "[LeftEnd]`r`nMeter=Image`r`nX=$colL`r`nY=0R`r`nW=1`r`nH=1`r`n`r`n"
 
 # ----- rechte Spalte: Verhalten -----
-$hini += Row 'Speed' 'Tempo der Seitenleiste' $colR 62 '#Speed#' @(
+$hini += GroupHead 'GrpBehave' 'VERHALTEN' $colR
+$hini += Row 'Speed' 'Tempo der Seitenleiste' $colR '12R' '#Speed#' @(
     @('Schnell', '^fast$', "$(P Speed fast)$refAll"),
     @('Normal', '^normal$', "$(P Speed normal)$refAll"),
     @('Gemütlich', '^slow$', "$(P Speed slow)$refAll"))
 $hini += Row 'Reveal' 'Beim Anmelden/Aufwachen einblenden' $colR '22R' '#RevealPerItem#' @(
-    @('Aus', '^0$', "$(P RevealPerItem 0)$refAll"),
-    @('5 s', '^5$', "$(P RevealPerItem 5)$refAll"),
+    @('20 s', '^20$', "$(P RevealPerItem 20)$refAll"),
     @('10 s', '^10$', "$(P RevealPerItem 10)$refAll"),
-    @('20 s', '^20$', "$(P RevealPerItem 20)$refAll"))
+    @('5 s', '^5$', "$(P RevealPerItem 5)$refAll"),
+    @('Aus', '^0$', "$(P RevealPerItem 0)$refAll"))
 $hini += Small 'RevealInfo' 'Sekunden pro offenem Punkt (höchstens 2 Minuten).' $colR
 $hini += Row 'Remind' 'Erinnerungen' $colR '22R' '#RemindOn#-#RemindLead#' @(
-    @('Aus', '^0-', "$(P RemindOn 0)$refAll"),
-    @('Pünktlich', '^1-0$', "$(P RemindOn 1)$(P RemindLead 0)$refAll"),
+    @('15 Min vorher', '^1-15$', "$(P RemindOn 1)$(P RemindLead 15)$refAll"),
     @('5 Min vorher', '^1-5$', "$(P RemindOn 1)$(P RemindLead 5)$refAll"),
-    @('15 Min vorher', '^1-15$', "$(P RemindOn 1)$(P RemindLead 15)$refAll"))
+    @('Pünktlich', '^1-0$', "$(P RemindOn 1)$(P RemindLead 0)$refAll"),
+    @('Aus', '^0-', "$(P RemindOn 0)$refAll"))
 $kill = '[!CommandMeasure MeasureKillHotkey "Run"]'
 $hini += Row 'Hotkey' 'Tastenkürzel für neuen Punkt' $colR '22R' '#HotkeyNow#' @(
     @('Strg+Alt+T', '^Strg\+Alt\+T$', "$(P Hotkey ctrl+alt+t)$kill"),

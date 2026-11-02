@@ -17,13 +17,13 @@ Rectangle {
     property bool iconButton: false
     property bool flat: false        // alt: wie iconButton
     property real fontScale: 1.0
-    property bool bold: true
+    property bool bold: false
     readonly property bool asIcon: iconButton || flat
     readonly property color accentFill: P.check(Plasmoid.configuration.accent)
     signal clicked()
 
     implicitWidth: Math.max(implicitHeight, row.implicitWidth + (label.visible ? Kirigami.Units.largeSpacing * 2.2 : Kirigami.Units.smallSpacing * 3))
-    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.9)
+    implicitHeight: Math.round(Kirigami.Units.gridUnit * 1.65)
     radius: Kirigami.Units.gridUnit * 0.45
     property color fill: selected ? accentFill
         : asIcon ? (hov.hovered ? P.btnHover : P.btnFill)
@@ -55,7 +55,7 @@ Rectangle {
         PC3.Label {
             id: label
             color: chip.textColor
-            font.weight: chip.bold ? Font.DemiBold : Font.Normal
+            font.weight: chip.bold || chip.selected ? Font.DemiBold : Font.Normal
             font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * chip.fontScale
             visible: text !== ""
         }

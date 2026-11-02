@@ -31,6 +31,18 @@ Rectangle {
             savedCondition = -1;
         }
     }
+    // Plasmas Halter so hoch machen wie die Liste (sonst ist der Rahmen beim Verschieben viel groesser)
+    function fitBox() {
+        if (inPanel || !visible) return;
+        if (!box) box = deskContainer();
+        if (!box || box.dragActive || !box.layout) return;
+        var h = Math.ceil(implicitHeight);
+        if (Math.abs(box.height - h) > 1) { box.height = h; box.layout.save(); }
+    }
+    onImplicitHeightChanged: fitTimer.restart()
+    onVisibleChanged: fitTimer.restart()
+    Component.onCompleted: fitTimer.restart()
+    Timer { id: fitTimer; interval: 400; onTriggered: view.fitBox() }
     Connections {
         target: view.box
         // nach dem Ziehen: Bearbeitungsrahmen wieder weg, normales Verhalten zurueck
@@ -38,6 +50,7 @@ Rectangle {
             if (view.box.dragActive) return;
             view.box.editMode = false;
             if (!headHover.hovered) view.setDirectMove(false);
+            view.fitBox();
         }
     }
 

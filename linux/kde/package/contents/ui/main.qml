@@ -46,8 +46,9 @@ PlasmoidItem {
     Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
     toolTipMainText: "Obsidian Todo"
     toolTipSubText: model ? model.openCount + " offen" : ""
-    switchWidth: Kirigami.Units.gridUnit * 14
-    switchHeight: Kirigami.Units.gridUnit * 10
+    // klein, damit die Liste auf dem Desktop nie zum Symbol wird (der Halter ist nur so hoch wie die Liste)
+    switchWidth: Kirigami.Units.gridUnit * 8
+    switchHeight: Kirigami.Units.gridUnit * 2
     // Desktop: ganze Liste. Leiste: schmaler Streifen; die Liste klappt als Popup daneben auf.
     // (Die ganze Liste IN einer Leiste geht nicht: KDE begrenzt die Leistenbreite, und das Umschalten
     //  zwischen Symbol und Liste schaukelte sich mit der Leistengroesse zu einer Dauerschleife auf.)
@@ -549,6 +550,9 @@ PlasmoidItem {
                 else if (c.indexOf("side=") === 0) Plasmoid.configuration.side = c.substring(5);
                 else if (c.indexOf("accent=") === 0) Plasmoid.configuration.accent = c.substring(7);
                 else if (c.indexOf("hotkey=") === 0) root.setHotkey(c.substring(7));
+                else if (c === "settingsmove") { settings.x = settings.x - 200; settings.y = settings.y - 100; root.run("printf %s " + root.q("settings " + settings.x + "," + settings.y) + " > /tmp/obsidian-todo-test.out"); }
+                else if (c === "deskinfo") { var d2 = root.fullRepresentationItem.children[0]; var bx = d2.deskContainer(); root.run("printf %s " + root.q(bx ? "halter " + bx.width + "x" + bx.height + " liste " + d2.implicitWidth + "x" + d2.implicitHeight : "kein Halter") + " > /tmp/obsidian-todo-test.out"); }
+                else if (c === "desksize") { var d3 = root.fullRepresentationItem.children[0]; var b3 = d3.deskContainer(); b3.height = d3.implicitHeight; root.run("printf %s " + root.q("halter jetzt " + b3.width + "x" + b3.height) + " > /tmp/obsidian-todo-test.out"); }
                 else if (c === "direct" || c === "undirect") { var dv = root.fullRepresentationItem.children[0]; dv.setDirectMove(c === "direct"); root.run("printf %s " + root.q(dv.box ? "bedingung=" + dv.box.editModeCondition : "kein Halter") + " > /tmp/obsidian-todo-test.out"); }
                 else if (c === "status") root.run('printf %s ' + root.q("shown=" + side.shown + " mode=" + root.mode + " hotkey=" + root.hotkey + " version=" + root.version) + ' > /tmp/obsidian-todo-test.out');
             });
