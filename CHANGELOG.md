@@ -1,5 +1,13 @@
 # Änderungen
 
+## 1.2.1 – 2. November 2026
+
+### Windows und Linux (KDE)
+- **Seitenleiste:** Der Rand reagiert nur noch im mittleren Teil. Oben und unten bleiben je 20 % der Bildschirmhöhe frei, so öffnet die Liste nicht mehr, wenn man in eine Ecke fährt (Schließen-Knopf, Uhr).
+
+### Nur Linux (KDE)
+- Das Setup läuft jetzt auch unter Kubuntu/Ubuntu: Dort fehlt das Werkzeug `kpackagetool6`, mit dem 1.2.0 abbrach. Das Setup kopiert das Widget dann selbst an die richtige Stelle.
+
 ## 1.2.0 – 2. November 2026
 
 ### Windows und Linux (KDE Plasma 6) – beide sehen jetzt gleich aus
