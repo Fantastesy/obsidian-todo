@@ -405,8 +405,21 @@ end
 local function render(openCount, doneCount)
 	lastOpen, lastDone = openCount, doneCount
 	setCount(openCount)
-	SKIN:Bang('!SetOption', 'MeterFold', 'Text', SKIN:GetVariable(collapsed and 'FoldClosed' or 'FoldOpen'))
-	if collapsed then
+	-- Seitenleiste (oder "Beides" gerade als Panel am Rand): Liste ist ohnehin bildschirmhoch -> kein Einklappen,
+	-- Pfeil weg und "x offen" an den rechten Rand
+	local asPanel = mode == 'sidebar' or panel
+	local isCollapsed = collapsed and not asPanel
+	if asPanel then
+		SKIN:Bang('!HideMeter', 'MeterFold')
+		SKIN:Bang('!HideMeter', 'FoldBtn')
+		SKIN:Bang('!SetOption', 'MeterCount', 'X', width - 20)
+	else
+		SKIN:Bang('!ShowMeter', 'MeterFold')
+		SKIN:Bang('!ShowMeter', 'FoldBtn')
+		SKIN:Bang('!SetOption', 'MeterCount', 'X', width - 62)
+	end
+	SKIN:Bang('!SetOption', 'MeterFold', 'Text', SKIN:GetVariable(isCollapsed and 'FoldClosed' or 'FoldOpen'))
+	if isCollapsed then
 		SKIN:Bang('!HideMeterGroup', 'List')
 		SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0,0,' .. width .. ',' .. (listTop - 4) .. ',12 | Fill Color #ColorBg# | StrokeWidth 0')
 		SKIN:Bang('!UpdateMeter', '*')

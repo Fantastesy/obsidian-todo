@@ -126,16 +126,18 @@ Rectangle {
                 color: view.app.fileMissing || view.app.configMissing ? P.over : P.done
                 font.weight: Font.DemiBold
             }
+            // in der Seitenleiste ist die Liste ohnehin bildschirmhoch: kein Einklappen
             Chip {
                 iconButton: true
                 iconName: view.app.collapsed ? "arrow-down" : "arrow-up"
+                visible: !view.inPanel
                 textColor: P.done
                 onClicked: view.app.collapsed = !view.app.collapsed
             }
         }
 
         PC3.Label {
-            visible: view.app.configMissing && !view.app.collapsed
+            visible: view.app.configMissing && (!view.app.collapsed || view.inPanel)
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             color: P.note
@@ -144,7 +146,7 @@ Rectangle {
 
         // ---------- Punkte ----------
         ColumnLayout {
-            visible: !view.app.collapsed && !view.app.configMissing
+            visible: (!view.app.collapsed || view.inPanel) && !view.app.configMissing
             Layout.fillWidth: true
             spacing: 0
 
