@@ -47,8 +47,11 @@ Window {
     title: "Obsidian Todo"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
     color: "transparent"
-    width: panel.implicitWidth
-    height: panel.implicitHeight
+    readonly property int wantW: panel.implicitWidth
+    readonly property int wantH: panel.implicitHeight
+    width: wantW
+    // nie hoeher als der Bildschirm; was nicht passt, laesst sich scrollen
+    height: Math.min(wantH, Screen.desktopAvailableHeight - Kirigami.Units.gridUnit * 2)
 
     // ---------- Oeffnen ----------
     function reset() {
@@ -169,12 +172,21 @@ Window {
             }
         }
 
+        Flickable {
+            id: flick
+            anchors.fill: parent
+            clip: true
+            contentWidth: width
+            contentHeight: panel.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+            interactive: contentHeight > height
+            PC3.ScrollBar.vertical: PC3.ScrollBar { policy: flick.interactive ? PC3.ScrollBar.AlwaysOn : PC3.ScrollBar.AlwaysOff }
+
         ColumnLayout {
             id: content
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: Kirigami.Units.gridUnit
+            x: Kirigami.Units.gridUnit
+            y: Kirigami.Units.gridUnit
+            width: flick.width - Kirigami.Units.gridUnit * 2
             spacing: Kirigami.Units.smallSpacing
 
             RowLayout {
@@ -245,30 +257,38 @@ Window {
                     locale: Qt.locale("de_DE")
                     delegate: PC3.Label { text: shortName; horizontalAlignment: Text.AlignHCenter; color: P.done; font: Kirigami.Theme.smallFont }
                 }
-                QQC2.MonthGrid {
+                // eigenes Monatsraster (6 Wochen ab Montag): QQC2.MonthGrid bleibt unter Qt 6.10 (Kubuntu 26.04) leer
+                Grid {
+                    id: monthGrid
                     Layout.fillWidth: true
-                    month: dlg.calMonth
-                    year: dlg.calYear
-                    locale: Qt.locale("de_DE")
-                    delegate: Rectangle {
-                        required property var model
-                        readonly property string dayIso: Core.iso(Core.dayOf(model.year, model.month + 1, model.day))
-                        readonly property bool sel: dayIso === dlg.date
-                        implicitHeight: Kirigami.Units.gridUnit * 1.7
-                        radius: Kirigami.Units.gridUnit * 0.4
-                        color: sel ? P.check(Plasmoid.configuration.accent) : (dayHover.hovered ? P.chipHover : "transparent")
-                        border.width: model.today && !sel ? 1 : 0
-                        border.color: P.accent(Plasmoid.configuration.accent)
-                        opacity: model.month === dlg.calMonth ? 1 : 0.3
-                        HoverHandler { id: dayHover; cursorShape: Qt.PointingHandCursor }
-                        PC3.Label {
-                            anchors.centerIn: parent
-                            text: model.day
-                            color: parent.sel ? P.text : (model.today ? P.accent(Plasmoid.configuration.accent) : P.note)
-                            font.bold: parent.sel
+                    columns: 7
+                    readonly property int offset: (new Date(dlg.calYear, dlg.calMonth, 1).getDay() + 6) % 7
+                    readonly property string todayIso: Core.iso(Core.today())
+                    Repeater {
+                        model: 42
+                        delegate: Rectangle {
+                            required property int index
+                            readonly property var day: new Date(dlg.calYear, dlg.calMonth, 1 - monthGrid.offset + index)
+                            readonly property string dayIso: Core.iso(Core.dayOf(day.getFullYear(), day.getMonth() + 1, day.getDate()))
+                            readonly property bool sel: dayIso === dlg.date
+                            readonly property bool isToday: dayIso === monthGrid.todayIso
+                            width: monthGrid.width / 7
+                            height: Kirigami.Units.gridUnit * 1.7
+                            radius: Kirigami.Units.gridUnit * 0.4
+                            color: sel ? P.check(Plasmoid.configuration.accent) : (dayHover.hovered ? P.chipHover : "transparent")
+                            border.width: isToday && !sel ? 1 : 0
+                            border.color: P.accent(Plasmoid.configuration.accent)
+                            opacity: day.getMonth() === dlg.calMonth ? 1 : 0.3
+                            HoverHandler { id: dayHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: { dlg.date = parent.dayIso; dlg.calOpen = false } }
+                            PC3.Label {
+                                anchors.centerIn: parent
+                                text: parent.day.getDate()
+                                color: parent.sel ? P.text : (parent.isToday ? P.accent(Plasmoid.configuration.accent) : P.note)
+                                font.bold: parent.sel
+                            }
                         }
                     }
-                    onClicked: (d) => { dlg.date = Core.iso(Core.dayOf(d.getFullYear(), d.getMonth() + 1, d.getDate())); dlg.calOpen = false }
                 }
             }
 
@@ -410,6 +430,7 @@ Window {
                 Chip { text: "Abbrechen"; onClicked: dlg.visible = false }
                 Chip { text: "Speichern"; selected: true; onClicked: dlg.save() }
             }
+        }
         }
     }
 }

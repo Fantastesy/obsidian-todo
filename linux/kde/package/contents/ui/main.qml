@@ -556,6 +556,9 @@ PlasmoidItem {
                 else if (c === "form") root.openForm(null);
                 else if (c === "editform") root.openForm(root.rows[0]);
                 else if (c === "closeform") form.visible = false;
+                else if (c === "formcal") form.calOpen = !form.calOpen;
+                else if (c === "formshot") form.contentItem.grabToImage(function (r) { r.saveToFile("/tmp/obsidian-todo-form.png"); });
+                else if (c === "formsize") root.run('printf %s ' + root.q("window=" + form.width + "x" + form.height + " inhalt=" + form.wantW + "x" + form.wantH) + ' > /tmp/obsidian-todo-test.out');
                 else if (c === "notes") root.toggleNotes(root.rows[0].key);
                 else if (c === "settings") root.openSettings();
                 else if (c === "closesettings") settings.visible = false;
