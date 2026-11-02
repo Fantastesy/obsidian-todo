@@ -250,7 +250,7 @@ Window {
                         current: dlg.cfg.remindOn ? dlg.cfg.remindLead : "aus"
                         onPicked: v => { if (v === "aus") dlg.cfg.remindOn = false; else { dlg.cfg.remindOn = true; dlg.cfg.remindLead = v; } }
                     }
-                    // Tastenkuerzel: aktuelles anzeigen, "Aendern ..." nimmt die naechste Tastenkombination auf
+                    // Tastenkuerzel: aktuelles anzeigen, Klick darauf nimmt die naechste Tastenkombination auf
                     Setting { caption: "Tastenkürzel für neuen Punkt"; options: [] }
                     RowLayout {
                         Layout.topMargin: Kirigami.Units.smallSpacing
@@ -261,12 +261,11 @@ Window {
                             text: dlg.recording ? (dlg.recPreview || "Tasten drücken …") : dlg.niceKey(dlg.app.hotkey)
                             onClicked: dlg.startRecording()
                         }
-                        Chip { text: "Ändern …"; onClicked: dlg.startRecording() }
                         Chip { text: "Zurücksetzen"; onClicked: { dlg.recording = false; dlg.app.setHotkey("Meta+Shift+T"); } }
                     }
                     Small {
                         text: dlg.recording ? "Jetzt die neue Kombination drücken (mit Strg, Alt oder Meta) · Esc = abbrechen"
-                                            : "Ändern: anklicken und die neue Kombination drücken (Esc = abbrechen)."
+                                            : "Zum Ändern auf das Kürzel klicken und die neue Kombination drücken (Esc = abbrechen)."
                     }
                     Setting {
                         caption: "Todo-Datei"
