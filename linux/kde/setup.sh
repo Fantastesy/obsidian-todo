@@ -428,6 +428,28 @@ else
     apply_mode "${MODE:-sidebar}" 1 || log "Umbau der alten Seitenleiste fehlgeschlagen"
 fi
 
+# Plasma haelt die alte Widget-Version im Speicher, bis plasmashell neu startet. Beim Setup von Hand (z. B. Update
+# von einer alten Version ohne Auto-Update) deshalb Plasma neu starten, sonst bleibt die alte Liste stehen.
+restart_plasma() {
+    command -v plasmashell >/dev/null 2>&1 || return 1
+    pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 || return 1
+    if [ "$(systemctl --user is-active plasma-plasmashell.service 2>/dev/null)" = active ]; then
+        systemctl --user restart plasma-plasmashell.service >>"$LOG" 2>&1 && return 0
+    fi
+    if command -v kquitapp6 >/dev/null 2>&1; then kquitapp6 plasmashell >>"$LOG" 2>&1; else pkill -u "$(id -u)" -x plasmashell; fi
+    for i in 1 2 3 4 5 6 7 8 9 10; do pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 || break; sleep 0.5; done
+    if command -v kstart >/dev/null 2>&1; then kstart plasmashell >>"$LOG" 2>&1
+    else (setsid plasmashell >/dev/null 2>&1 &); fi
+    for i in 1 2 3 4 5 6 7 8 9 10; do pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1 && return 0; sleep 0.5; done
+    (setsid plasmashell >/dev/null 2>&1 &)   # kstart hat nicht geklappt
+    sleep 1; pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1
+}
+if [ "$SILENT" = 0 ]; then
+    log "Plasma wird neu gestartet (neue Widget-Version laden)"
+    restart_plasma || log "Plasma-Neustart nicht moeglich - neue Version nach dem naechsten Anmelden"
+    sleep 4
+fi
+
 log "fertig: $TODO_FILE (Version $VERSION)"
 if [ "$SILENT" = 1 ]; then
     command -v notify-send >/dev/null 2>&1 && notify-send -a "$APP" -i checkbox "$APP aktualisiert" "Version $VERSION ist installiert. Sie wird nach dem nächsten Anmelden aktiv."

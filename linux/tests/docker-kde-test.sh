@@ -17,7 +17,7 @@ command -v docker >/dev/null || export PATH="/h/Windows stuff/Docker Desktop/res
 
 dist_win="$(cd "$(dirname "$setup")" && pwd -W 2>/dev/null || pwd)"
 docker rm -f $c >/dev/null 2>&1
-docker run -d --name $c --shm-size=1g -p 127.0.0.1:3010:3000 -e PUID=1000 -e PGID=1000 -e TZ=Europe/Berlin \
+docker run -d --name $c --shm-size=1g -p 127.0.0.1:${PORT:-3010}:3000 -e PUID=1000 -e PGID=1000 -e TZ=Europe/Berlin \
     -e LC_ALL=de_DE.UTF-8 -e QT_FORCE_STDERR_LOGGING=1 -e "QT_LOGGING_RULES=qml.debug=true;js.debug=true" -v "$dist_win:/setup:ro" $img >/dev/null || exit 1
 for i in $(seq 1 60); do sleep 3; docker exec $c pgrep -x plasmashell >/dev/null 2>&1 && break; done
 sleep 15   # Plasma fertig starten lassen

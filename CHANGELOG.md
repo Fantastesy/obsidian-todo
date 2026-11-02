@@ -1,5 +1,10 @@
 # Änderungen
 
+## 1.2.2 – 2. November 2026
+
+### Nur Linux (KDE)
+- **Update von Hand zeigte weiter die alte Liste:** Plasma behielt die alte Widget-Version im Speicher, bis man sich neu anmeldete (keine Einstellungen, keine Seitenleiste). Das Setup startet Plasma jetzt am Ende neu, dann ist die neue Version sofort da. Der Bildschirm flackert dabei kurz.
+
 ## 1.2.1 – 2. November 2026
 
 ### Windows und Linux (KDE)
