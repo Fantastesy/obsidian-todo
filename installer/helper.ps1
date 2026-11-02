@@ -237,6 +237,8 @@ exit `$p.ExitCode
             if (-not (Test-Path -LiteralPath $todo)) { [IO.File]::WriteAllText($todo, "# Todo`n`n- [ ] Mein erster Punkt`n", $utf8) }
             if (-not (Test-Path -LiteralPath $archive)) { [IO.File]::WriteAllText($archive, "# Todo-Archiv`n", $utf8) }
 
+            # schon eingerichtet (Update)? settings.inc gibt es seit 1.0.0
+            $wasInstalled = Test-Path -LiteralPath (Join-Path $res 'settings.inc')
             # settings.inc: alle benutzerabhaengigen Werte fuer den Skin (UTF-16 LE wie alle Rainmeter-Dateien)
             $vaultName = Split-Path $Vault.TrimEnd('\') -Leaf
             $inc = "[Variables]`r`nTodoFile=$todo`r`nArchiveFile=$archive`r`nVaultName=$vaultName`r`nTodoUrl=$(Url $todo)`r`nArchiveUrl=$(Url $archive)`r`n"
@@ -244,6 +246,12 @@ exit `$p.ExitCode
             # eigene Einstellungen (Breite) - nur anlegen, nie ueberschreiben
             $prefs = Join-Path $res 'prefs.inc'
             if (-not (Test-Path -LiteralPath $prefs)) { [IO.File]::WriteAllText($prefs, "[Variables]`r`n", [Text.Encoding]::Unicode) }
+            # Update von vor 1.2.0: Liste blieb bisher auf dem Desktop -> dort lassen (nur Neuinstallationen starten
+            # mit der Seitenleiste). Wer schon eine Anzeige gewaehlt hat, behaelt sie.
+            if ($wasInstalled -and -not (Select-String -LiteralPath $prefs -Encoding Unicode -Pattern '^\s*Mode\s*=' -Quiet)) {
+                Add-Content -LiteralPath $prefs -Value 'Mode=desktop' -Encoding Unicode
+                Log "Update: Anzeige bleibt Desktop"
+            }
             $colors = Join-Path $res 'colors.inc'
             if (-not (Test-Path -LiteralPath $colors)) { [IO.File]::WriteAllText($colors, "[Variables]`r`n", [Text.Encoding]::Unicode) }
 

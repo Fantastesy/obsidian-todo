@@ -47,8 +47,8 @@ PlasmoidItem {
     toolTipMainText: "Obsidian Todo"
     toolTipSubText: model ? model.openCount + " offen" : ""
     // klein, damit die Liste auf dem Desktop nie zum Symbol wird (der Halter ist nur so hoch wie die Liste)
-    switchWidth: Kirigami.Units.gridUnit * 8
-    switchHeight: Kirigami.Units.gridUnit * 2
+    switchWidth: inPanel ? Kirigami.Units.gridUnit * 8 : 0
+    switchHeight: inPanel ? Kirigami.Units.gridUnit * 2 : 0
     // Desktop: ganze Liste. Leiste: schmaler Streifen; die Liste klappt als Popup daneben auf.
     // (Die ganze Liste IN einer Leiste geht nicht: KDE begrenzt die Leistenbreite, und das Umschalten
     //  zwischen Symbol und Liste schaukelte sich mit der Leistengroesse zu einer Dauerschleife auf.)
@@ -264,6 +264,7 @@ PlasmoidItem {
                 refresh();
                 // nur fuer automatische Tests: OBSIDIAN_TODO_TEST=new|edit oeffnet das Formular
                 if (cfg.TEST) testTimer.mode = cfg.TEST;
+                testCmds = cfg.TESTCMD === "1";
             });
     }
 
@@ -533,10 +534,12 @@ PlasmoidItem {
         }
     }
 
+    // nur fuer automatische Tests (eingeschaltet, wenn beim Start /tmp/obsidian-todo-test.enable existiert):
+    property bool testCmds: false
     // nur fuer automatische Tests: Befehle aus /tmp/obsidian-todo-test.cmd (Datei wird danach geloescht)
     // show | hide | settings | reveal | edge | mode=<sidebar|desktop|both> | side=<left|right>
     Timer {
-        interval: 1500; running: true; repeat: true
+        interval: 1500; running: root.testCmds; repeat: true
         onTriggered: root.run('f=/tmp/obsidian-todo-test.cmd; [ -f "$f" ] && { cat "$f"; rm -f "$f"; }; true', function (code, out) {
             out.split("\n").forEach(function (c) {
                 c = c.trim();

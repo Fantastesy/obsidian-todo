@@ -8,7 +8,9 @@ Eine Todo-Liste für den Desktop, die direkt als Markdown in deinem [Obsidian](h
 - Wiederkehrende Punkte (täglich, werktags, wöchentlich, monatlich, individuell)
 - Notizen, Links, Dateien und Unteraufgaben pro Punkt
 - Archiv für erledigte Punkte (`Todo-Archiv.md`)
-- Tastenkürzel für einen neuen Punkt, von überall – Enter speichert sofort (Windows: **Strg+Alt+T** bzw. Win+Shift+T, KDE: **Meta+Shift+T**)
+- Als **Seitenleiste** am Bildschirmrand (gleitet herein, wenn die Maus an den Rand fährt), auf dem **Desktop** oder **beides**
+- Einstellungen über das Zahnrad: Seite, Breite, Schriftgröße, Hintergrund, Akzentfarbe, Tempo, Einblenden, Erinnerungen, Tastenkürzel, Todo-Datei, Updates
+- Tastenkürzel für einen neuen Punkt, von überall – Enter speichert sofort (Standard Windows: **Win+Shift+T** bzw. Strg+Alt+T, KDE: **Meta+Shift+T**; im Zahnrad änderbar)
 
 ## Installation unter Windows
 
@@ -35,7 +37,7 @@ chmod +x ObsidianTodo-KDE-Setup-*.sh
 Das Setup
 - findet Obsidian (Paket, Flatpak, Snap oder AppImage) und installiert es auf Wunsch mit (Flatpak, sonst AppImage),
 - lässt dich einen vorhandenen Vault wählen oder einen neuen anlegen und verwendet eine vorhandene `Todo.md` weiter,
-- installiert das Widget, setzt es oben rechts auf den Desktop und richtet **Meta+Shift+T** als Tastenkürzel ein,
+- installiert das Widget (als Seitenleiste am rechten Rand, auf dem Desktop oder beides) und richtet **Meta+Shift+T** als Tastenkürzel ein,
 - braucht keine Root-Rechte.
 
 Erinnerungen mit den Knöpfen „Erledigt“ / „In 15 Min nochmal“ brauchen `notify-send` (Paket `libnotify-bin` bzw. `libnotify`). GNOME-Unterstützung ist geplant.
@@ -67,15 +69,15 @@ node linux/tests/core-test.js         # Tests für die Logik der KDE-Version
 
 | Ordner | Inhalt |
 |---|---|
-| `src/build-skin.ps1` | erzeugt die Rainmeter-Dateien (`Todo.ini`, Formular, Hilfe) |
-| `src/todo.lua`, `src/form.lua` | Logik der Liste und des Formulars |
+| `src/build-skin.ps1` | erzeugt die Rainmeter-Dateien (`Todo.ini`, Formular, Einstellungen, Rand-Streifen) |
+| `src/todo.lua`, `src/form.lua`, `src/sidebar.lua` | Logik der Liste, des Formulars und der Seitenleiste |
 | `src/hotkey.cs` | kleines Programm für das globale Tastenkürzel |
 | `src/notify.ps1`, `src/toast-action.vbs` | Windows-Erinnerungen und deren Knöpfe |
 | `src/update.ps1` | automatische Updates über GitHub-Releases |
 | `installer/` | Inno-Setup-Skript und Hilfsskript für Erkennung/Einrichtung |
 | `linux/kde/package/` | KDE-Plasma-Widget (QML); `contents/code/todo.js` ist die Logik im selben Format wie `todo.lua` |
 | `linux/kde/setup.sh`, `update.sh` | Linux-Setup und automatische Updates |
-| `linux/tests/` | Tests (Logik mit Node, Widget und Setup in WSL/Ubuntu) |
+| `linux/tests/` | Tests (Logik mit Node, Widget und Setup in einem KDE-Docker-Container) |
 
 Für ein Release: Version in `VERSION` erhöhen, beide Builds ausführen, Release mit Tag `v<VERSION>` anlegen und `dist\ObsidianTodo-Setup-<version>.exe` sowie `dist/ObsidianTodo-KDE-Setup-<version>.sh` anhängen. Die Updater erkennen die Dateien am Namensanfang (`ObsidianTodo-Setup` bzw. `ObsidianTodo-KDE-Setup`), der bleibt also immer gleich.
 

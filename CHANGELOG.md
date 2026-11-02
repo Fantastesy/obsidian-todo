@@ -1,5 +1,26 @@
 # Änderungen
 
+## 1.2.0 – 2. November 2026
+
+### Windows und Linux (KDE Plasma 6) – beide sehen jetzt gleich aus
+- **Seitenleiste:** Fährt die Maus an den Bildschirmrand, gleitet die Liste als bildschirmhohes Panel herein und nach dem Wegfahren wieder hinaus. Solange die Maus am Rand oder in der Liste ist, bleibt sie offen. Wahlweise am rechten oder linken Rand.
+- **Anzeige:** Seitenleiste, Desktop oder Beides. Bei „Beides“ liegt die Liste auf dem Desktop, blendet am Rand sanft aus und gleitet als Panel herein.
+- **Einstellungen (Zahnrad statt „?“)** – sortiert nach Aussehen und Verhalten:
+  - Aussehen: Anzeige, Seite, Breite, Schriftgröße, Hintergrund (deckend bis durchsichtig), Akzentfarbe (6 Farben)
+  - Verhalten: Tempo der Seitenleiste, Einblenden beim Anmelden/Aufwachen (Sekunden pro Punkt oder aus), Erinnerungen (pünktlich, 5 oder 15 Minuten vorher, aus), Tastenkürzel (anklicken und neue Kombination drücken; „Zurücksetzen“), Todo-Datei wechseln, automatische Updates an/aus
+  - darunter die Kurzhilfe, „Archiv öffnen“ und die Versionsnummer
+- **Richtige Knöpfe:** Zahnrad, Pfeil, Büroklammer und „+ Neuer Punkt“ mit Rand und Hover-Effekt; Klickflächen nur noch so groß wie ihr Inhalt (ein Klick neben einen Punkt hakt ihn nicht mehr ab).
+- In der Seitenleiste gibt es keinen Einklapp-Pfeil (die Liste ist dort ohnehin bildschirmhoch).
+- Einstellungen und Formular lassen sich an der Titelzeile verschieben.
+
+### Nur Windows
+- **Wer die Liste schon hatte, behält nach dem Update „Desktop“.** Neuinstallationen starten mit der Seitenleiste. Umschalten: Zahnrad → Anzeige.
+- Beim Tastenkürzel wird geprüft, ob ein anderes Programm die Kombination schon belegt.
+
+### Nur Linux (KDE)
+- Keine eigene KDE-Leiste mehr: Die Liste ist immer ein Widget auf dem Desktop, die Seitenleiste macht das Widget selbst (ohne hellen Plasma-Rahmen). Eine Seitenleiste aus 1.1.x wird beim Update automatisch umgebaut; die neue Ansicht erscheint nach dem nächsten Anmelden.
+- Die Liste auf dem Desktop lässt sich direkt an der Kopfzeile verschieben (ohne Bearbeitungsmodus).
+- Die Anzeige wird im Zahnrad-Fenster umgeschaltet statt im Rechtsklick-Menü.
 ## 1.1.1 – 2. November 2026
 
 ### Windows

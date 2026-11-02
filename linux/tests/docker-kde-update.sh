@@ -31,7 +31,7 @@ update)
     rm -rf "$tmp"
     docker exec $c bash -c 'chown -R abc /tmp/pkg'
     docker exec $c insession bash -c 'kpackagetool6 -t Plasma/Applet -u /tmp/pkg >/dev/null 2>&1 && echo "Widget aktualisiert"
-        pkill -x plasmashell; sleep 2
+        touch /tmp/obsidian-todo-test.enable; pkill -x plasmashell; sleep 2
         (setsid plasmashell > /tmp/plasma.log 2>&1 &) ; sleep 12; pgrep -x plasmashell >/dev/null && echo "Plasma laeuft"'
     ;;
 esac
