@@ -28,6 +28,7 @@ Item {
     property bool shown: false
     property bool revealing: false
     property bool mouseInside: false
+    property bool debugEdge: false      // nur fuer Tests: Streifen rot zeigen
 
     function show() { if (active) { leaveTimer.stop(); shown = true; } }
     function hide() { leaveTimer.stop(); revealTimer.stop(); revealing = false; shown = false; }
@@ -49,7 +50,27 @@ Item {
     }
     function revealEnd() { revealing = false; if (!mouseInside) leaveTimer.restart(); }
 
-    onActiveChanged: if (!active) hide()
+    onActiveChanged: { if (!active) hide(); placeEdge(); }
+    onOnLeftChanged: placeEdge()
+    onAreaChanged: placeEdge()
+    // Plasma uebernimmt die Position eines offenen Fensters erst beim naechsten Erscheinen:
+    // Streifen kurz ausblenden und an der neuen Stelle wieder zeigen
+    function placeEdge() {
+        edge.visible = false;
+        if (active) edgeTimer.restart();
+    }
+    Timer { id: edgeTimer; interval: 50; onTriggered: edge.visible = side.active }
+    Component.onCompleted: placeEdge()
+
+    // ---------- Animation (selbst gemacht wie unter Windows; KWins Gleiten ist nicht ueberall an) ----------
+    // slide: 0 = draussen, 1 = ganz drin. Dauer je nach Tempo.
+    readonly property int slideMs: Plasmoid.configuration.speed === "fast" ? 130
+        : Plasmoid.configuration.speed === "slow" ? 380 : 220
+    property real slide: 0
+    Behavior on slide {
+        NumberAnimation { duration: side.slideMs; easing.type: side.shown ? Easing.OutCubic : Easing.InCubic }
+    }
+    onShownChanged: slide = shown ? 1 : 0
 
     Timer {
         id: leaveTimer
@@ -62,7 +83,7 @@ Item {
     // ---------- Rand-Streifen ----------
     PlasmaCore.Dialog {
         id: edge
-        visible: side.active
+        visible: false
         type: PlasmaCore.Dialog.Notification
         flags: Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus | Qt.FramelessWindowHint
         location: PlasmaCore.Types.Floating
@@ -74,28 +95,35 @@ Item {
             width: 1
             height: side.area.height
             // fast durchsichtig: ganz durchsichtige Flaechen bemerkt die Maus nicht ueberall
-            Rectangle { anchors.fill: parent; color: "#02000000" }
+            Rectangle { anchors.fill: parent; color: side.debugEdge ? "red" : "#02000000" }
             HoverHandler { onHoveredChanged: if (hovered) side.edgeHit() }
         }
     }
 
     // ---------- Panel ----------
+    // Das Fenster reicht bis an den Bildschirmrand; darin gleitet die Liste von aussen herein.
+    readonly property int panelW: Plasmoid.configuration.listWidth + margin
     PlasmaCore.Dialog {
         id: panel
-        visible: side.shown
+        visible: side.shown || side.slide > 0
         type: PlasmaCore.Dialog.Notification
         flags: Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint
-        // KWin laesst das Fenster von dieser Kante hereingleiten
-        location: side.onLeft ? PlasmaCore.Types.LeftEdge : PlasmaCore.Types.RightEdge
+        location: PlasmaCore.Types.Floating
         backgroundHints: PlasmaCore.Types.NoBackground
         hideOnWindowDeactivate: false
-        x: side.onLeft ? side.gx + side.margin : side.gx + side.area.width - Plasmoid.configuration.listWidth - side.margin
+        x: side.onLeft ? side.gx : side.gx + side.area.width - side.panelW
         y: side.gy + side.margin
         mainItem: Item {
-            width: Plasmoid.configuration.listWidth
+            width: side.panelW
             height: side.area.height - 2 * side.margin
+            clip: true
             TodoView {
-                anchors.fill: parent
+                width: Plasmoid.configuration.listWidth
+                height: parent.height
+                // drin: margin vom Rand; draussen: ganz hinter dem Rand
+                x: side.onLeft
+                    ? side.margin - (Plasmoid.configuration.listWidth + side.margin) * (1 - side.slide)
+                    : (Plasmoid.configuration.listWidth + side.margin) * (1 - side.slide)
                 app: side.app
                 inPanel: true
             }

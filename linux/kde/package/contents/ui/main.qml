@@ -543,6 +543,7 @@ PlasmoidItem {
                 if (c === "show") side.show();
                 else if (c === "hide") side.hide();
                 else if (c === "edge") side.edgeHit();
+                else if (c === "redge") side.debugEdge = !side.debugEdge;
                 else if (c === "settings") root.openSettings();
                 else if (c === "closesettings") settings.visible = false;
                 else if (c === "reveal") root.reveal();
