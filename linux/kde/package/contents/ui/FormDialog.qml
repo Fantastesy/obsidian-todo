@@ -203,7 +203,7 @@ Window {
                 Layout.fillWidth: true
                 // an der Titelzeile ziehen = Fenster verschieben (KDE uebernimmt das Ziehen)
                 PC3.Label {
-                    text: dlg.mode === "edit" ? "Punkt bearbeiten" : "Neuer Punkt"
+                    text: dlg.mode === "edit" ? "Eintrag bearbeiten" : "Neuer Eintrag"
                     color: P.text
                     font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.45
                     font.bold: true

@@ -468,7 +468,7 @@ $where
 Gespeichert wird in:
 $TODO_FILE
 
-Neuer Punkt von überall: $SHORTCUT
+Neuer Eintrag von überall: $SHORTCUT
 Anzeige, Farben und mehr: Zahnrad neben „Todo“.
 Entfernen: Rechtsklick auf die Liste.
 Entfernen geht auch über das Startmenü: „Obsidian To-do entfernen“."

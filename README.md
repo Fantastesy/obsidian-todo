@@ -10,7 +10,7 @@ Eine Todo-Liste für den Desktop, die direkt als Markdown in deinem [Obsidian](h
 - Archiv für erledigte Punkte (`Todo-Archiv.md`)
 - Als **Seitenleiste** am Bildschirmrand (gleitet herein, wenn die Maus an den Rand fährt), auf dem **Desktop** oder **beides**
 - Einstellungen über das Zahnrad: Seite, Breite, Schriftgröße, Hintergrund, Akzentfarbe, Tempo, Einblenden, Erinnerungen, Tastenkürzel, Todo-Datei, Updates
-- Tastenkürzel für einen neuen Punkt, von überall – Enter speichert sofort (Standard Windows: **Win+Shift+T** bzw. Strg+Alt+T, KDE: **Meta+Shift+T**; im Zahnrad änderbar)
+- Tastenkürzel für einen neuen Eintrag, von überall – Enter speichert sofort (Standard Windows: **Win+Shift+T** bzw. Strg+Alt+T, KDE: **Meta+Shift+T**; im Zahnrad änderbar)
 
 ## Installation unter Windows
 

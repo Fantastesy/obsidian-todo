@@ -215,7 +215,7 @@ Rectangle {
                 // als Knopf wie Zahnrad und Pfeil
                 Chip {
                     iconButton: true
-                    text: "+ Neuer Punkt"
+                    text: "+ Neuer Eintrag"
                     textColor: P.accent(Plasmoid.configuration.accent)
                     bold: true
                     onClicked: view.app.openForm(null)

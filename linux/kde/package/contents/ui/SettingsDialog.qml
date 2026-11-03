@@ -267,7 +267,7 @@ Window {
                         }
                         Chip { text: "Hinzufügen"; onClicked: { if (dlg.app.addTag(tagField.text)) tagField.text = ""; } }
                     }
-                    Small { text: "Klick auf einen Tag wechselt seine Farbe. Zuweisen im Formular (neuer Punkt / Rechtsklick). In der Datei steht er als #tag." }
+                    Small { text: "Klick auf einen Tag wechselt seine Farbe. Zuweisen im Formular (neuer Eintrag / Rechtsklick). In der Datei steht er als #tag." }
                 }
                 // ----- rechte Spalte: Verhalten -----
                 ColumnLayout {
@@ -296,7 +296,7 @@ Window {
                         onPicked: v => { if (v === "aus") dlg.cfg.remindOn = false; else { dlg.cfg.remindOn = true; dlg.cfg.remindLead = v; } }
                     }
                     // Tastenkuerzel: aktuelles anzeigen, Klick darauf nimmt die naechste Tastenkombination auf
-                    Setting { caption: "Tastenkürzel für neuen Punkt"; options: [] }
+                    Setting { caption: "Tastenkürzel für neuen Eintrag"; options: [] }
                     RowLayout {
                         Layout.topMargin: Kirigami.Units.smallSpacing
                         spacing: Kirigami.Units.smallSpacing * 1.5
@@ -366,7 +366,7 @@ Window {
                     ["Klick", "Punkt abhaken (nochmal klicken = rückgängig)"],
                     ["Rechtsklick", "Punkt bearbeiten oder löschen"],
                     ["Ziehen", "Punkt mit der Maus an eine andere Stelle schieben (neue Punkte mit Datum kommen von selbst nach oben)"],
-                    ["+ Neuer Punkt", "neuen Punkt anlegen, überall auch mit dem Tastenkürzel (siehe oben)"],
+                    ["+ Neuer Eintrag", "neuen Eintrag anlegen, überall auch mit dem Tastenkürzel (siehe oben)"],
                     ["Enter", "speichert den Punkt sofort (Datum vorher wählen oder später ergänzen)"],
                     ["Titel „Todo“", "Liste in Obsidian öffnen"],
                     ["Seitenleiste", "Maus an den Bildschirmrand – die Liste gleitet herein"],

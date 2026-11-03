@@ -124,7 +124,7 @@ PlasmoidItem {
         run('s="${XDG_DATA_HOME:-$HOME/.local/share}/obsidian-todo/setup.sh"; [ -f "$s" ] && setsid bash "$s" ' + args + ' >/dev/null 2>&1 < /dev/null &');
     }
     Plasmoid.contextualActions: [
-        PlasmaCore.Action { text: "Neuer Punkt"; icon.name: "list-add"; onTriggered: root.openForm(null) },
+        PlasmaCore.Action { text: "Neuer Eintrag"; icon.name: "list-add"; onTriggered: root.openForm(null) },
         PlasmaCore.Action { text: "In Obsidian öffnen"; icon.name: "document-open"; onTriggered: root.openInObsidian() },
         PlasmaCore.Action { text: "Einstellungen …"; icon.name: "configure"; onTriggered: root.openSettings() },
         PlasmaCore.Action { isSeparator: true },

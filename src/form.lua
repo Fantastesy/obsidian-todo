@@ -165,7 +165,7 @@ local function render()
 		chips[#chips + 1] = { m, selected }
 	end
 
-	set('MeterHead', 'Text', f.mode == 'edit' and 'Punkt bearbeiten' or 'Neuer Punkt')
+	set('MeterHead', 'Text', f.mode == 'edit' and 'Eintrag bearbeiten' or 'Neuer Eintrag')
 	local y = 62
 	set('LblTitle', 'Y', y); y = y + 24
 	set('FieldTitle', 'Y', y)

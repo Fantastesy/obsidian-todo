@@ -496,7 +496,7 @@ FontSize=#FontSize#
 FontWeight=600
 FontColor=#ColorAccent#
 AntiAlias=1
-Text=+ Neuer Punkt
+Text=+ Neuer Eintrag
 
 [MeterClean]
 Meter=String
@@ -665,7 +665,7 @@ FontSize=17
 FontWeight=700
 FontColor=#ColorText#
 AntiAlias=1
-Text=Neuer Punkt
+Text=Neuer Eintrag
 
 [MeterClose]
 Meter=String
@@ -1090,7 +1090,7 @@ $helpLines = @(
     'Klick: Punkt abhaken (nochmal klicken = rückgängig)'
     'Rechtsklick: Punkt bearbeiten oder löschen'
     'Ziehen: Punkt mit der Maus an eine andere Stelle schieben (neue Punkte mit Datum kommen von selbst nach oben)'
-    '+ Neuer Punkt: neuen Punkt anlegen, überall auch mit dem Tastenkürzel (siehe oben)'
+    '+ Neuer Eintrag: neuen Eintrag anlegen, überall auch mit dem Tastenkürzel (siehe oben)'
     'Enter: speichert den Punkt sofort (Datum vorher wählen oder später ergänzen)'
     'Titel „Todo“: Liste in Obsidian öffnen'
     'Seitenleiste: Maus an den Bildschirmrand – die Liste fährt herein'
@@ -1427,7 +1427,7 @@ for ($k = 1; $k -le 8; $k++) {
     $hini += "[TagX$k]`r`nMeter=String`r`nHidden=1`r`nX=$colL`r`nY=0`r`nPadding=11,10,11,9`r`nFontFace=#IconFace#`r`nFontSize=8`r`nFontColor=#ColorDone#`r`nSolidColor=0,0,0,1`r`nAntiAlias=1`r`nText=$close`r`nLeftMouseUpAction=[!CommandMeasure MeasureSettings `"Remove($k)`"]`r`n`r`n"
 }
 $hini += "[TagAdd]`r`nMeter=String`r`nX=$colL`r`nY=0`r`nW=150`r`nPadding=12,7,12,7`r`nFontFace=#FontFace#`r`nFontSize=11`r`nFontWeight=600`r`nFontColor=#ColorAccent#`r`nSolidColor=0,0,0,1`r`nAntiAlias=1`r`nText=+ Neuer Tag`r`nLeftMouseUpAction=[!CommandMeasure MeasureSettings `"AddStart()`"]`r`n`r`n"
-$hini += Small 'TagInfo' 'Klick auf einen Tag wechselt seine Farbe. Zuweisen im Formular (neuer Punkt / Rechtsklick). In der Datei steht er als #tag.' $colL '0'
+$hini += Small 'TagInfo' 'Klick auf einen Tag wechselt seine Farbe. Zuweisen im Formular (neuer Eintrag / Rechtsklick). In der Datei steht er als #tag.' $colL '0'
 $hini += "[LeftEnd]`r`nMeter=Image`r`nX=$colL`r`nY=0R`r`nW=1`r`nH=1`r`n`r`n"
 
 # ----- rechte Spalte: Verhalten -----
@@ -1449,7 +1449,7 @@ $hini += Row 'Remind' 'Erinnerungen' $colR '22R' '#RemindOn#-#RemindLead#' @(
     @('Aus', '^0-', "$(P RemindOn 0)$refAll"))
 $kill = '[!CommandMeasure MeasureKillHotkey "Run"]'
 # Tastenkuerzel: aktuelles anzeigen, Klick darauf nimmt ein neues auf (TodoHotkey.exe --record), "Zuruecksetzen" = Standard
-$hini += Caption 'CapHotkey' 'Tastenkürzel für neuen Punkt' $colR
+$hini += Caption 'CapHotkey' 'Tastenkürzel für neuen Eintrag' $colR
 $hini += SetChip 'HotkeyNow1' $colR '10R' '#HotkeyNow#' '[!CommandMeasure MeasureRecord "Run"]' '#ColorText#' 11 190
 $hini += SetChip 'HotkeyReset' ($colR + 198) 'r' 'Zurücksetzen' "$(P Hotkey '')$kill"
 $hini += "[SelHotkeyNow]`r`nMeasure=String`r`nString=x`r`nIfMatch=x`r`nIfMatchAction=$($sel -f 'HotkeyNow1')`r`n`r`n"
