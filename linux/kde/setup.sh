@@ -5,6 +5,7 @@
 #
 # Optionen:
 #   --silent      Update ohne Rueckfragen (nutzt die gespeicherte Einrichtung)
+#   --restart     mit --silent: Plasma danach neu starten, damit die neue Version sofort geladen wird
 #   --uninstall   Widget entfernen (Todo.md und Archiv bleiben erhalten), --yes ohne Rueckfrage
 #   --mode sidebar|desktop|both Anzeige umschalten: Seitenleiste, Desktop oder beides (sonst im Zahnrad-Fenster)
 #
@@ -22,12 +23,14 @@ LOG="${TMPDIR:-/tmp}/obsidian-todo-setup.log"
 SILENT=0
 UNINSTALL=0
 YES=0
+RESTART=0
 SET_MODE=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --silent) SILENT=1 ;;
         --uninstall) UNINSTALL=1 ;;
         --yes) YES=1 ;;
+        --restart) RESTART=1 ;;
         --mode) SET_MODE="${2:-}"; shift ;;
     esac
     shift
@@ -444,7 +447,7 @@ restart_plasma() {
     (setsid plasmashell >/dev/null 2>&1 &)   # kstart hat nicht geklappt
     sleep 1; pgrep -u "$(id -u)" -x plasmashell >/dev/null 2>&1
 }
-if [ "$SILENT" = 0 ]; then
+if [ "$SILENT" = 0 ] || [ "$RESTART" = 1 ]; then
     log "Plasma wird neu gestartet (neue Widget-Version laden)"
     restart_plasma || log "Plasma-Neustart nicht moeglich - neue Version nach dem naechsten Anmelden"
     sleep 4
@@ -452,7 +455,7 @@ fi
 
 log "fertig: $TODO_FILE (Version $VERSION)"
 if [ "$SILENT" = 1 ]; then
-    command -v notify-send >/dev/null 2>&1 && notify-send -a "$APP" -i checkbox "$APP aktualisiert" "Version $VERSION ist installiert. Sie wird nach dem nächsten Anmelden aktiv."
+    command -v notify-send >/dev/null 2>&1 && { if [ "$RESTART" = 1 ]; then notify-send -a "$APP" -i checkbox "$APP aktualisiert" "Version $VERSION ist installiert."; else notify-send -a "$APP" -i checkbox "$APP aktualisiert" "Version $VERSION ist installiert. Sie wird nach dem nächsten Anmelden aktiv."; fi; }
 else
     case "${MODE:-panel}" in
         panel|sidebar) where="Die Liste gleitet herein, wenn du mit der Maus an den rechten Bildschirmrand fährst, und nach dem Anmelden/Aufklappen kurz von selbst." ;;

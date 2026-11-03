@@ -44,3 +44,10 @@ function dueColor(state) {
     if (state === "today") return today;
     return done;
 }
+
+// Tag-Farben: wie die Akzentfarben, dazu grau. Etikett = halbdurchsichtige Flaeche + helle Schrift
+var TAG_COLORS = ["lila", "blau", "gruen", "orange", "rot", "pink", "grau"];
+var GREY = ["#FF8C8C9A", "#FFD2D2DC"];
+function tagFill(name) { return "#40" + (ACCENTS[name] || GREY)[0].substring(3); }
+function tagText(name) { return (ACCENTS[name] || GREY)[1]; }
+function tagDot(name) { return (ACCENTS[name] || GREY)[0]; }

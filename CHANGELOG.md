@@ -1,5 +1,17 @@
 # Änderungen
 
+## 1.3.0 – 3. November 2026
+
+### Windows und Linux (KDE)
+- **Punkte verschieben:** Einen Punkt mit der Maus an eine andere Stelle ziehen – eine Linie zeigt, wo er landet. Die Reihenfolge steht danach so in der Todo.md (auch in Obsidian). Ein normaler Klick hakt weiterhin ab.
+- **Neue Punkte mit Datum kommen von selbst nach oben** (nach Fälligkeit zwischen die anderen Punkte mit Datum). Man kann sie danach trotzdem woandershin ziehen – sie bleiben dann dort. Beim ersten Start wird die Todo.md einmal so geordnet, wie die Liste bisher aussah.
+- **Farbige Tags:** In den Einstellungen eigene Tags anlegen (Klick auf einen Tag = andere Farbe, × = entfernen) und sie im Formular einem Punkt zuweisen. In der Liste erscheinen sie als farbige Etiketten, in der Datei als Obsidian-Tag `#arbeit`.
+- **„Nach Updates suchen“** in den Einstellungen. Gibt es eine neue Version, erscheint „Jetzt aktualisieren“ – sie wird sofort installiert und die Liste lädt neu, ohne Abmelden.
+- Kurzhilfe ergänzt (Ziehen).
+
+### Nur Linux (KDE)
+- Updates über „Jetzt aktualisieren“ starten Plasma am Ende selbst neu, damit die neue Version sofort da ist.
+
 ## 1.2.2 – 2. November 2026
 
 ### Nur Linux (KDE)

@@ -9,6 +9,7 @@ import org.kde.plasma.components as PC3
 import org.kde.plasma.plasma5support as P5Support
 import org.kde.kirigami as Kirigami
 import "../code/todo.js" as Core
+import "../code/palette.js" as P
 
 PlasmoidItem {
     id: root
@@ -288,7 +289,9 @@ PlasmoidItem {
         rebuildRows();
         // nach der Anmeldung einmal einblenden
         if (!startupRevealDone) { startupRevealDone = true; reveal(); }
+        if (!Plasmoid.configuration.manualOrder && !migrationQueued) { migrationQueued = true; migrateOrder(); }
     }
+    property bool migrationQueued: false
 
     function dueInfo(text, done) {
         var d = Core.dueOf(text);
@@ -317,9 +320,77 @@ PlasmoidItem {
             });
             out.push({ key: t.text, line: t.line, orig: model.lines[t.line], done: t.done, title: Core.taskText(t.text),
                        dueLabel: di.label, dueState: di.state, repeat: !!Core.ruleOf(t.text),
+                       tags: t.tags.map(function (n) { return { name: n, color: tagColor(n) }; }),
                        subs: subs, subsDone: subsDone, notes: notes, open: !!openNotes[t.text] });
         });
         rows = out;
+    }
+
+    // ---------- Tags ----------
+    // [{ name, color }] aus den Einstellungen ("arbeit:blau,privat:pink")
+    readonly property var tagList: Core.parseTagConf(Plasmoid.configuration.tags)
+    onTagListChanged: rebuildRows()
+    function tagColor(name) {
+        for (var i = 0; i < tagList.length; i++) if (tagList[i].name.toLowerCase() === String(name).toLowerCase()) return tagList[i].color;
+        return "grau";
+    }
+    function saveTags(list) { Plasmoid.configuration.tags = Core.tagConfString(list); }
+    function addTag(name, color) {
+        name = Core.cleanTag(name);
+        if (!name || !/\D/.test(name)) return false;
+        var list = tagList.slice();
+        for (var i = 0; i < list.length; i++) if (list[i].name.toLowerCase() === name.toLowerCase()) return false;
+        list.push({ name: name, color: color || P.TAG_COLORS[list.length % 6] });
+        saveTags(list);
+        return true;
+    }
+    function removeTag(name) { saveTags(tagList.filter(function (t) { return t.name !== name; })); }
+    // naechste Farbe fuer einen Tag (Klick auf den Farbpunkt)
+    function cycleTagColor(name) {
+        saveTags(tagList.map(function (t) {
+            if (t.name !== name) return t;
+            var i = P.TAG_COLORS.indexOf(t.color);
+            return { name: t.name, color: P.TAG_COLORS[(i + 1) % P.TAG_COLORS.length] };
+        }));
+    }
+
+    // ---------- Reihenfolge ----------
+    // Punkt per Ziehen verschieben (nur offene Punkte; die Reihenfolge steht danach so in der Datei)
+    function moveTask(fromLine, fromOrig, toLine, toOrig) {
+        enqueue(function (m) {
+            var a = Core.findTask(m, fromLine, fromOrig), b = Core.findTask(m, toLine, toOrig);
+            if (!a || !b || a.done || b.done) return false;
+            return Core.moveTask(m, a, b);
+        });
+    }
+    // Umstieg auf die eigene Reihenfolge (seit 1.3.0): die Datei einmal so ordnen, wie sie bisher angezeigt wurde
+    function migrateOrder() {
+        if (Plasmoid.configuration.manualOrder) return;
+        enqueue(function (m) {
+            Plasmoid.configuration.manualOrder = true;
+            return Core.sortOnce(m);
+        });
+    }
+
+    // ---------- Updates von Hand (Einstellungen: "Nach Updates suchen") ----------
+    // updateState: "" | "checking" | "current" | "available" | "installing" | "error"
+    property string updateState: ""
+    property string updateVersion: ""
+    function checkForUpdates() {
+        updateState = "checking";
+        run('u="${XDG_DATA_HOME:-$HOME/.local/share}/obsidian-todo/update.sh"; [ -f "$u" ] && sh "$u" --check 2>/dev/null || echo fehler', function (code, out) {
+            var m = /^(neu|aktuell) (\S+)/m.exec(out);
+            if (!m) { updateState = "error"; return; }
+            updateVersion = m[2];
+            updateState = m[1] === "neu" ? "available" : "current";
+        });
+    }
+    // jetzt installieren: laeuft ausserhalb von Plasma weiter (Plasma wird am Ende neu gestartet und laedt die neue Version)
+    function installUpdate() {
+        updateState = "installing";
+        run('u="${XDG_DATA_HOME:-$HOME/.local/share}/obsidian-todo/update.sh"; '
+            + 'if command -v systemd-run >/dev/null 2>&1 && systemd-run --user --quiet --collect sh "$u" --now >/dev/null 2>&1; then :; '
+            + 'else setsid sh "$u" --now >/dev/null 2>&1 < /dev/null & fi');
     }
 
     Timer {
@@ -564,6 +635,14 @@ PlasmoidItem {
                     if (gi) gi.grabToImage(function (r) { r.saveToFile("/tmp/obsidian-todo-" + gn + ".png"); });
                 }
                 else if (c.indexOf("formfill=") === 0) form.testFill(c.substring(9));
+                // move=2,0: Zeile 2 an die Stelle von Zeile 0 ziehen (wie mit der Maus)
+                else if (c.indexOf("move=") === 0) { var mv = c.substring(5).split(","); var dv2 = root.fullRepresentationItem.children[0]; dv2.dragStart(+mv[0]); dv2.dragTo = +mv[1]; dv2.dragEnd(); }
+                else if (c.indexOf("tags=") === 0) Plasmoid.configuration.tags = c.substring(5);
+                else if (c.indexOf("formtags=") === 0) { form.tags = c.substring(9).split(","); }
+                else if (c === "updcheck") root.checkForUpdates();
+                else if (c === "updnow") root.installUpdate();
+                else if (c === "migrate") { Plasmoid.configuration.manualOrder = false; root.migrateOrder(); }
+                else if (c === "updstate") root.run('printf %s ' + root.q("update=" + root.updateState + " " + root.updateVersion + " order=" + Plasmoid.configuration.manualOrder) + ' > /tmp/obsidian-todo-test.out');
                 else if (c.indexOf("choose=") === 0) root.chooseTodo(c.substring(7));
                 else if (c === "todo") root.run('{ echo "datei=' + root.todoFile + '"; cat ' + root.q(root.todoFile) + '; } > /tmp/obsidian-todo-test.out');
                 else if (c === "formsize") root.run('printf %s ' + root.q("window=" + form.width + "x" + form.height + " inhalt=" + form.wantW + "x" + form.wantH) + ' > /tmp/obsidian-todo-test.out');

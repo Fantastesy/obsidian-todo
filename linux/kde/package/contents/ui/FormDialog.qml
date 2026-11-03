@@ -24,6 +24,7 @@ Window {
     property string time: ""          // HH:MM oder ""
     property string rule: ""
     property var notes: []
+    property var tags: []             // zugewiesene Tags (Namen)
     property string errorText: ""
     property bool confirmDelete: false
 
@@ -61,7 +62,7 @@ Window {
     function openNew() {
         reset();
         mode = "new"; line = -1; orig = "";
-        titleField.text = ""; date = ""; time = ""; rule = ""; notes = [];
+        titleField.text = ""; date = ""; time = ""; rule = ""; notes = []; tags = [];
         showDialog();
     }
     function openEdit(values, ln, o) {
@@ -69,6 +70,7 @@ Window {
         mode = "edit"; line = ln; orig = o;
         titleField.text = values.title; date = values.date; time = values.time; rule = values.rule;
         notes = values.notes.slice();
+        tags = (values.tags || []).slice();
         otherTime = time !== "" && times.indexOf(time) < 0;
         if (otherTime) otherField.text = time;
         if (rule !== "" && standardRules.indexOf(rule) < 0) loadCustom(rule);
@@ -132,7 +134,7 @@ Window {
             if (otherField.text !== "" && !t) { errorText = "„" + otherField.text + "“ ist keine Uhrzeit – bitte z. B. 15:30 eingeben."; return; }
             time = t || "";
         }
-        var values = { title: title, date: date, time: time, rule: rule,
+        var values = { title: title, date: date, time: time, rule: rule, tags: tags.slice(),
                        notes: notes.map(function (n) { return Core.trim(n); }).filter(function (n) { return n !== ""; }) };
         app.saveForm(mode, line, orig, values);
         visible = false;
@@ -375,6 +377,36 @@ Window {
                         }
                     }
                 }
+            }
+
+            // ---------- Tags (anlegen und Farben in den Einstellungen) ----------
+            Caption { text: "Tags" }
+            Flow {
+                Layout.fillWidth: true
+                spacing: Kirigami.Units.smallSpacing
+                visible: dlg.app && dlg.app.tagList.length > 0
+                Repeater {
+                    model: dlg.app ? dlg.app.tagList : []
+                    delegate: Chip {
+                        readonly property bool on: dlg.tags.some(function (n) { return n.toLowerCase() === modelData.name.toLowerCase(); })
+                        text: modelData.name
+                        selected: on
+                        fill: on ? P.tagDot(modelData.color) : (hovered ? P.chipHover : P.chip)
+                        border.color: on ? P.tagDot(modelData.color) : P.chipStroke
+                        textColor: on ? P.text : P.tagText(modelData.color)
+                        onClicked: {
+                            var name = modelData.name;
+                            dlg.tags = on ? dlg.tags.filter(function (n) { return n.toLowerCase() !== name.toLowerCase(); }) : dlg.tags.concat([name]);
+                        }
+                    }
+                }
+            }
+            PC3.Label {
+                visible: !dlg.app || dlg.app.tagList.length === 0
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: P.done
+                text: "Noch keine Tags – anlegen in den Einstellungen (Zahnrad)."
             }
 
             // ---------- Zusammenfassung ----------

@@ -24,7 +24,7 @@ New-Item -ItemType Directory -Force $res | Out-Null
 & (Join-Path $src 'build-skin.ps1') -Out $skin -Version $version
 
 # 2. Lua als UTF-16 LE (sonst zeigt Rainmeter Umlaute/Emoji falsch an), Hilfsskripte kopieren
-foreach ($f in 'todo.lua', 'form.lua', 'sidebar.lua') {
+foreach ($f in 'todo.lua', 'form.lua', 'sidebar.lua', 'settings.lua') {
     [IO.File]::WriteAllText((Join-Path $res $f), [IO.File]::ReadAllText((Join-Path $src $f), [Text.Encoding]::UTF8), [Text.Encoding]::Unicode)
 }
 foreach ($f in 'notify.ps1', 'pick-file.ps1', 'update.ps1', 'choose-todo.ps1', 'toast-action.vbs') { Copy-Item (Join-Path $src $f) $res }

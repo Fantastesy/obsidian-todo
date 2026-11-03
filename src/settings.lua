@@ -1,0 +1,172 @@
+-- Einstellungen-Fenster (Config ObsidianTodo\Einstellungen): Tags verwalten und von Hand nach Updates suchen.
+-- Alles andere im Fenster sind feste Knoepfe aus build-skin.ps1. Datei muss als UTF-16 LE gespeichert sein.
+--
+-- Tags stehen in prefs.inc als "Tags=arbeit:blau,privat:pink" (bleibt bei Updates erhalten).
+-- Klick auf einen Tag = naechste Farbe, "×" = Tag entfernen, "+ Neuer Tag" = Name eintippen.
+
+local ORDER = { 'lila', 'blau', 'gruen', 'orange', 'rot', 'pink', 'grau' }
+local COL = {
+	lila = { '138,108,245', '165,185,255' }, blau = { '60,130,240', '140,190,255' },
+	gruen = { '50,170,100', '140,220,170' }, orange = { '235,135,40', '255,195,130' },
+	rot = { '220,70,70', '255,160,160' }, pink = { '220,80,165', '255,165,215' },
+	grau = { '140,140,154', '210,210,220' },
+}
+local MAX = 8
+local LEFT, RIGHT = 22, 22 + 438       -- linke Spalte
+local tags = {}
+local drawn = false
+
+local function trim(s) return (s:gsub('^%s+', ''):gsub('%s+$', '')) end
+
+local function load()
+	tags = {}
+	for part in (SKIN:GetVariable('Tags') or ''):gmatch('[^,]+') do
+		local name, col = part:match('^%s*(.-):(%a+)%s*$')
+		if name and name ~= '' and #tags < MAX then tags[#tags + 1] = { name = name, color = COL[col] and col or 'grau' } end
+	end
+end
+
+function Initialize() load() end
+
+local function set(m, o, v) SKIN:Bang('!SetOption', m, o, v) end
+local function show(m, on) SKIN:Bang(on and '!ShowMeter' or '!HideMeter', m) end
+
+-- Tags unter "Tags" in Reihen anordnen, abgerundete Flaechen in TagShapes
+local function render()
+	local cap = SKIN:GetMeter('CapTags')
+	if not cap then return end
+	local y = cap:GetY() + cap:GetH() + 10
+	local x = LEFT
+	local shapes = {}
+	local function place(m, w)
+		if x > LEFT and x + w > RIGHT then x = LEFT; y = y + 42 end
+		set(m, 'X', x); set(m, 'Y', y)
+		local px = x
+		x = x + w
+		return px
+	end
+	for k = 1, MAX do
+		local t, m, mx = tags[k], 'TagS' .. k, 'TagX' .. k
+		if t then
+			local c = COL[t.color]
+			set(m, 'Text', t.name)
+			set(m, 'FontColor', c[2] .. ',255')
+			-- erst einblenden: versteckte Meter melden die Breite 0
+			show(m, true); show(mx, true)
+			SKIN:Bang('!UpdateMeter', m)
+			SKIN:Bang('!UpdateMeter', mx)
+			local w, wx = SKIN:GetMeter(m):GetW(), SKIN:GetMeter(mx):GetW()
+			if x > LEFT and x + w + wx + 2 > RIGHT then x = LEFT; y = y + 42 end
+			local px = place(m, w)
+			shapes[#shapes + 1] = string.format('Rectangle %d.5,%d.5,%d,33,8 | Fill Color %s,60 | StrokeWidth 1 | Stroke Color %s,255', px, y, w - 1, c[1], c[1])
+			x = x + 2
+			local pxx = place(mx, wx)
+			shapes[#shapes + 1] = string.format('Rectangle %d.5,%d.5,%d,33,8 | Fill Color 255,255,255,14 | StrokeWidth 1 | Stroke Color 255,255,255,38', pxx, y, wx - 1)
+			x = x + 10
+			show(m, true); show(mx, true)
+		else
+			show(m, false); show(mx, false)
+		end
+	end
+	show('TagAdd', #tags < MAX)
+	if #tags < MAX then
+		SKIN:Bang('!UpdateMeter', 'TagAdd')
+		local w = SKIN:GetMeter('TagAdd'):GetW()
+		local px = place('TagAdd', w)
+		shapes[#shapes + 1] = string.format('Rectangle %d.5,%d.5,%d,33,8 | Fill Color 255,255,255,14 | StrokeWidth 1 | Stroke Color 255,255,255,38', px, y, w - 1)
+	end
+	y = y + 42
+	set('TagInfo', 'Y', y)
+	for k = 1, math.max(#shapes, 1) + MAX * 2 + 1 do
+		set('TagShapes', k == 1 and 'Shape' or ('Shape' .. k), shapes[k] or 'Rectangle 0,0,0,0 | StrokeWidth 0')
+	end
+	SKIN:Bang('!UpdateMeter', '*')
+	SKIN:Bang('!Redraw')
+end
+
+function Update()
+	if not drawn then drawn = true; render() end
+	return 0
+end
+
+-- speichern, Liste und Formular neu laden (Farben/Etiketten), Fenster neu zeichnen
+local function save()
+	local parts = {}
+	for _, t in ipairs(tags) do parts[#parts + 1] = t.name .. ':' .. t.color end
+	local s = table.concat(parts, ',')
+	SKIN:Bang('!SetVariable', 'Tags', s)
+	SKIN:Bang('!WriteKeyValue', 'Variables', 'Tags', s, '#@#prefs.inc')
+	SKIN:Bang('!Refresh', 'ObsidianTodo')
+	render()
+end
+
+function Cycle(k)
+	local t = tags[k]
+	if not t then return end
+	for i, c in ipairs(ORDER) do
+		if c == t.color then t.color = ORDER[i % #ORDER + 1] break end
+	end
+	save()
+end
+
+function Remove(k)
+	if not tags[k] then return end
+	table.remove(tags, k)
+	save()
+end
+
+-- "+ Neuer Tag": Eingabefeld ueber dem Knopf
+function AddStart()
+	local m = SKIN:GetMeter('TagAdd')
+	SKIN:Bang('!SetVariable', 'TagInX', m:GetX() + 4)
+	SKIN:Bang('!SetVariable', 'TagInY', m:GetY() + 5)
+	SKIN:Bang('!UpdateMeasure', 'MeasureTagInput')
+	SKIN:Bang('!CommandMeasure', 'MeasureTagInput', 'ExecuteBatch 1')
+end
+
+function AddDone()
+	local name = trim(SKIN:GetVariable('NewTag') or ''):gsub('^#+', ''):gsub('%s+', '-'):gsub('[#,:;%.!%?%(%)%[%]{}"\'<>]', '')
+	if name == '' or not name:match('%D') or #tags >= MAX then return end
+	for _, t in ipairs(tags) do if t.name:lower() == name:lower() then return end end
+	-- erste noch nicht benutzte Farbe
+	local used = {}
+	for _, t in ipairs(tags) do used[t.color] = true end
+	local color = ORDER[(#tags % 6) + 1]
+	for _, c in ipairs(ORDER) do if not used[c] then color = c break end end
+	tags[#tags + 1] = { name = name, color = color }
+	save()
+end
+
+-- ---------- Updates von Hand ----------
+function CheckUpdates()
+	set('UpdInfo', 'Text', 'Suche …')
+	show('UpdNow', false); show('UpdNowText', false)
+	SKIN:Bang('!UpdateMeter', '*')
+	SKIN:Bang('!Redraw')
+	SKIN:Bang('!CommandMeasure', 'MeasureUpdCheck', 'Run')
+end
+
+function UpdChecked()
+	local out = SKIN:GetMeasure('MeasureUpdCheck'):GetStringValue() or ''
+	local kind, ver = out:match('(%a+) ([%d%.]+)')
+	local text
+	if kind == 'neu' then
+		text = 'Version ' .. ver .. ' ist da.'
+		show('UpdNow', true); show('UpdNowText', true)
+	elseif kind == 'aktuell' then
+		text = 'Du hast die neueste Version (' .. ver .. ').'
+	else
+		text = 'Keine Verbindung zu GitHub – bitte später nochmal.'
+	end
+	set('UpdInfo', 'Text', text)
+	SKIN:Bang('!UpdateMeter', '*')
+	SKIN:Bang('!Redraw')
+end
+
+function InstallNow()
+	set('UpdInfo', 'Text', 'Wird installiert – die Liste lädt gleich neu …')
+	show('UpdNow', false); show('UpdNowText', false)
+	SKIN:Bang('!UpdateMeter', '*')
+	SKIN:Bang('!Redraw')
+	SKIN:Bang('!CommandMeasure', 'MeasureUpdNow', 'Run')
+end

@@ -7,6 +7,8 @@
 local path, maxItems, maxNotes, maxSubs, rowH, noteH, listTop, width, vault
 local lines, display, bom, nl, lastContent, lastOpen, lastDone
 local itemY, addY, noteMap, subMap = {}, {}, {}, {}
+-- Unterkante jedes Punkts (samt Unteraufgaben/Notizen), Hoehe des Hintergrunds, Tag-Farben: fuers Ziehen und die Etiketten
+local itemBot, lastBgH, tagConf = {}, nil, {}
 local expanded = {}
 -- laufende Bearbeitung: mode = 'task' | 'note' | 'addnote' | 'sub' | 'addsub'
 local edit
@@ -126,6 +128,43 @@ local function stripDue(text)
 	text = text:gsub('%s*' .. dueIcon .. '%s*%d%d%d%d%-%d%d%-%d%d', '')
 	text = text:gsub(repPattern(), '')
 	return (text:gsub('%s*' .. timeIcon .. '%s*%d%d?:%d%d', ''))
+end
+
+-- ---------- Tags (Obsidian-Schreibweise "#arbeit" in der Zeile) ----------
+-- Ein Tag beginnt nach Zeilenanfang oder Leerzeichen mit #, ohne Leer-/Satzzeichen, nicht nur Ziffern.
+local TAGCHARS = '[^%s#%.,;:!%?%(%)%[%]{}"\'<>]+'
+local MAXTAGS = 3              -- so viele Etiketten pro Punkt in der Liste
+local function tagsOf(text)
+	local out, seen = {}, {}
+	for name in (' ' .. text):gmatch('%s#(' .. TAGCHARS .. ')') do
+		if name:match('%D') and not seen[name:lower()] then
+			seen[name:lower()] = true
+			out[#out + 1] = name
+		end
+	end
+	return out
+end
+local function stripTags(text)
+	local s = (' ' .. text):gsub('(%s)#(' .. TAGCHARS .. ')', function(sp, name)
+		if name:match('%D') then return '' end
+	end)
+	return (s:gsub('^%s', ''):gsub('%s%s+', ' '))
+end
+-- Tag-Farben wie die Akzentfarben, dazu grau: { Flaeche, Schrift } (RGB)
+local TAGCOL = {
+	lila = { '138,108,245', '165,185,255' }, blau = { '60,130,240', '140,190,255' },
+	gruen = { '50,170,100', '140,220,170' }, orange = { '235,135,40', '255,195,130' },
+	rot = { '220,70,70', '255,160,160' }, pink = { '220,80,165', '255,165,215' },
+	grau = { '140,140,154', '210,210,220' },
+}
+-- Einstellung "Tags=arbeit:blau,privat:pink" -> { arbeit = 'blau', ... } (Namen klein)
+local function tagColors()
+	local out = {}
+	for part in (SKIN:GetVariable('Tags') or ''):gmatch('[^,]+') do
+		local name, col = part:match('^%s*(.-):(%a+)%s*$')
+		if name and name ~= '' then out[name:lower()] = col end
+	end
+	return out
 end
 
 -- Wiederholung und Uhrzeit
@@ -260,6 +299,15 @@ local function dueLabel(due, done, v, h, mi)
 	return label, v.colDue
 end
 
+-- Faelligkeit als Zahl (Datum + Uhrzeit), ohne Datum math.huge
+local function dueTimeOf(text)
+	local d = dueOf(text)
+	if not d then return math.huge end
+	local h, mi = timeOf(text)
+	if h then d = d + (h - 12) * 3600 + mi * 60 end
+	return d
+end
+
 local function parse(c)
 	bom = ''
 	if c:sub(1, 3) == '\239\187\191' then
@@ -292,22 +340,100 @@ local function parse(c)
 			current = nil
 		end
 	end
-	-- offene Punkte mit Datum nach Faelligkeit zuerst, dann die ohne Datum in Dateireihenfolge
-	for k, t in ipairs(open) do
-		t.order = k
-		t.due = dueOf(t.text)
-		local h, mi = timeOf(t.text)
-		if t.due and h then t.due = t.due + (h - 12) * 3600 + mi * 60 end
-	end
-	table.sort(open, function(a, b)
-		local da, db = a.due or math.huge, b.due or math.huge
-		if da ~= db then return da < db end
-		return a.order < b.order
-	end)
-	-- erledigte darunter
+	-- Reihenfolge = Reihenfolge in der Datei (eigene Reihenfolge per Ziehen); neue Punkte mit Datum werden
+	-- beim Anlegen nach Faelligkeit oben einsortiert (placeDated); erledigte stehen darunter
 	display = open
 	for _, t in ipairs(done) do display[#display + 1] = t end
+	for _, t in ipairs(display) do t.dueTime = dueTimeOf(t.text) end
 	return #open, #done
+end
+
+-- display usw. nach Aenderungen an lines neu bestimmen (Zeilenende und BOM bleiben)
+local function reparse()
+	local b, n = bom, nl
+	local o, d = parse(table.concat(lines, '\n'))
+	bom, nl = b, n
+	return o, d
+end
+
+-- Block (Zeilen) eines Punkts mit Datum nach Faelligkeit zwischen die anderen offenen Punkte mit Datum
+-- einsortieren: vor den ersten, der spaeter faellig ist, sonst hinter den letzten; gibt es noch keinen,
+-- ganz nach oben. Selbst verschobene Punkte ohne Datum bleiben so, wo sie sind. false = kein Platz gefunden.
+local function placeDated(block, due)
+	local at, lastDated, first
+	for _, t in ipairs(display) do
+		if not t.done and t.indent == 0 then
+			first = first or t
+			if t.dueTime ~= math.huge then
+				if t.dueTime > due then at = t.line break end
+				lastDated = t
+			end
+		end
+	end
+	if not at and lastDated then at = lastDated.last + 1 end
+	if not at and first then at = first.line end
+	if not at then return false end
+	for k, l in ipairs(block) do table.insert(lines, at + k - 1, l) end
+	return true
+end
+
+-- Punkt "from" an die Stelle von "to" schieben (beide offen): nach unten hinter "to", nach oben davor
+local function moveTask(from, to)
+	if not from or not to or from == to then return false end
+	local n = from.last - from.line + 1
+	local block = {}
+	for k = from.line, from.last do block[#block + 1] = lines[k] end
+	for k = from.last, from.line, -1 do table.remove(lines, k) end
+	local at = to.line > from.line and (to.last - n + 1) or to.line
+	for k, l in ipairs(block) do table.insert(lines, at + k - 1, l) end
+	return true
+end
+
+-- Einmalig beim Umstieg auf die eigene Reihenfolge (1.3.0): offene Punkte in der Datei so ordnen, wie sie
+-- bisher angezeigt wurden (mit Datum nach Faelligkeit zuerst). Erledigte bleiben an ihrem Platz.
+local function sortOnce()
+	local all = {}
+	for _, t in ipairs(display) do all[#all + 1] = t end
+	table.sort(all, function(a, b) return a.line < b.line end)
+	local out, pos, changed, k = {}, 1, false, 1
+	local function blankBetween(a, b)
+		for x = a.last + 1, b.line - 1 do if not lines[x]:match('^%s*$') then return false end end
+		return true
+	end
+	while k <= #all do
+		-- zusammenhaengender Lauf gleich eingerueckter Punkte, dazwischen nur Leerzeilen
+		local run = { all[k] }
+		while k < #all and all[k + 1].line > all[k].last and all[k + 1].indent == all[k].indent and blankBetween(all[k], all[k + 1]) do
+			k = k + 1
+			run[#run + 1] = all[k]
+		end
+		k = k + 1
+		local open, sorted = {}, {}
+		for i, t in ipairs(run) do if not t.done then open[#open + 1] = t; sorted[#sorted + 1] = { t = t, i = #open } end end
+		table.sort(sorted, function(a, b)
+			if a.t.dueTime ~= b.t.dueTime then return a.t.dueTime < b.t.dueTime end
+			return a.i < b.i
+		end)
+		local same = true
+		for i, s in ipairs(sorted) do if s.t ~= open[i] then same = false end end
+		if not same then
+			changed = true
+			for x = pos, run[1].line - 1 do out[#out + 1] = lines[x] end
+			local oi = 0
+			for si, slot in ipairs(run) do
+				local t = slot
+				if not slot.done then oi = oi + 1; t = sorted[oi].t end
+				for x = t.line, t.last do out[#out + 1] = lines[x] end
+				local gapEnd = run[si + 1] and run[si + 1].line or slot.last + 1
+				for x = slot.last + 1, gapEnd - 1 do out[#out + 1] = lines[x] end
+			end
+			pos = run[#run].last + 1
+		end
+	end
+	if not changed then return false end
+	for x = pos, #lines do out[#out + 1] = lines[x] end
+	lines = out
+	return true
 end
 
 local function save()
@@ -365,7 +491,7 @@ local function setCheck(m, done, text, v, y)
 	SKIN:Bang('!SetOption', b, 'InlineSetting3', 'Color | ' .. (done and v.colCheck or v.colBox))
 	SKIN:Bang('!SetOption', b, 'Y', y)
 	SKIN:Bang('!ShowMeter', b)
-	local shown = shortLinks(pretty(stripDue(stripStamps(text))))
+	local shown = shortLinks(pretty(stripTags(stripDue(stripStamps(text)))))
 	local due, dueCol = dueOf(text), v.colDone
 	if due then
 		local label
@@ -437,6 +563,7 @@ local function render(openCount, doneCount)
 	}
 	local colNote = SKIN:GetVariable('ColorNote')
 	local clipIcon = SKIN:GetVariable('ClipIcon')
+	tagConf = tagColors()
 	local y = listTop
 	local n, s = 0, 0
 	noteMap, subMap = {}, {}
@@ -452,16 +579,53 @@ local function render(openCount, doneCount)
 			setCheck(m, t.done, t.text, v, y)
 			itemY[i] = y
 
+			-- Tags als farbige Etiketten hinter dem Text (Breite vorher messen, damit der Text Platz macht)
+			local tags, tw = tagsOf(t.text), 0
+			for k = 1, MAXTAGS do
+				local tm = 'Tag' .. i .. '_' .. k
+				local name = tags[k]
+				if name then
+					local col = TAGCOL[tagConf[name:lower()] or 'grau'] or TAGCOL.grau
+					SKIN:Bang('!SetOption', tm, 'Text', name)
+					SKIN:Bang('!SetOption', tm, 'SolidColor', col[1] .. ',90')
+					SKIN:Bang('!SetOption', tm, 'FontColor', col[2] .. ',255')
+					-- erst einblenden: versteckte Meter melden die Breite 0
+					SKIN:Bang('!ShowMeter', tm)
+					SKIN:Bang('!UpdateMeter', tm)
+					tw = tw + SKIN:GetMeter(tm):GetW() + 5
+				else
+					SKIN:Bang('!HideMeter', tm)
+				end
+			end
+
 			-- Fortschritt der Unteraufgaben links neben der Bueroklammer
+			local clipW
 			if #t.subs > 0 then
 				SKIN:Bang('!SetOption', 'Progress' .. i, 'Text', subsDone .. '/' .. #t.subs)
 				SKIN:Bang('!SetOption', 'Progress' .. i, 'Y', y)
 				SKIN:Bang('!ShowMeter', 'Progress' .. i)
-				SKIN:Bang('!SetOption', m, 'ClipStringW', width - 183)
+				clipW = width - 183
 			else
 				SKIN:Bang('!HideMeter', 'Progress' .. i)
-				SKIN:Bang('!SetOption', m, 'ClipStringW', width - 129)
+				clipW = width - 129
 			end
+			-- Tags: passen Text und Etiketten in eine Zeile, direkt hinter den Text, sonst in eine eigene Zeile darunter
+			local tagsBelow = false
+			if tw > 0 then
+				SKIN:Bang('!SetOption', m, 'ClipStringW', 3000)
+				SKIN:Bang('!UpdateMeter', m)
+				local natural = SKIN:GetMeter(m):GetW()
+				tagsBelow = natural - 8 + tw > clipW
+				local tx = tagsBelow and SKIN:GetMeter(m):GetX() or (SKIN:GetMeter(m):GetX() + natural - 2)
+				for k = 1, math.min(#tags, MAXTAGS) do
+					local tm = 'Tag' .. i .. '_' .. k
+					SKIN:Bang('!SetOption', tm, 'X', tx)
+					SKIN:Bang('!SetOption', tm, 'Y', y + math.floor((rowH - 22) / 2))
+					SKIN:Bang('!ShowMeter', tm)
+					tx = tx + SKIN:GetMeter(tm):GetW() + 5
+				end
+			end
+			SKIN:Bang('!SetOption', m, 'ClipStringW', clipW)
 
 			SKIN:Bang('!SetOption', 'Clip' .. i, 'Text', clipIcon .. (count > 0 and (' ' .. count) or ''))
 			-- Knopf mittig in der ersten Zeile des Punkts, Symbol + Anzahl darauf zentriert
@@ -472,6 +636,11 @@ local function render(openCount, doneCount)
 			SKIN:Bang('!SetOption', 'Clip' .. i, 'FontColor', open and v.colLink or v.colDone)
 			SKIN:Bang('!ShowMeter', 'Clip' .. i)
 			y = y + heightOf(m, rowH)
+			if tagsBelow then
+				-- Etiketten-Zeile unter dem (ggf. umbrochenen) Text
+				for k = 1, math.min(#tags, MAXTAGS) do SKIN:Bang('!SetOption', 'Tag' .. i .. '_' .. k, 'Y', y - 4) end
+				y = y + 24
+			end
 
 			for _, sub in ipairs(t.subs) do
 				if s >= maxSubs then break end
@@ -511,9 +680,12 @@ local function render(openCount, doneCount)
 				SKIN:Bang('!HideMeter', 'FileAdd' .. i)
 			end
 			if #t.subs > 0 and not open then y = y + 4 end
+			itemBot[i] = y
 		else
 			hideCheck(m)
-			for _, p in ipairs({ 'Clip' .. i, 'Clip' .. i .. 'Btn', 'Progress' .. i, 'NoteAdd' .. i, 'SubAdd' .. i, 'FileAdd' .. i }) do
+			itemY[i], itemBot[i] = nil, nil
+			for _, p in ipairs({ 'Clip' .. i, 'Clip' .. i .. 'Btn', 'Progress' .. i, 'NoteAdd' .. i, 'SubAdd' .. i, 'FileAdd' .. i,
+				'Tag' .. i .. '_1', 'Tag' .. i .. '_2', 'Tag' .. i .. '_3' }) do
 				SKIN:Bang('!HideMeter', p)
 			end
 		end
@@ -551,6 +723,7 @@ local function render(openCount, doneCount)
 	-- Seitenleiste: Hintergrund ueber die ganze Bildschirmhoehe (oben und unten je 8 Pixel Abstand)
 	local bgH = y
 	if mode == 'sidebar' or panel then bgH = math.max(y, workH - 16) end
+	lastBgH = bgH
 	SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0,0,' .. width .. ',' .. bgH .. ',12 | Fill Color #ColorBg# | StrokeWidth 0')
 	setCount(openCount)
 	SKIN:Bang('!UpdateMeter', '*')
@@ -726,6 +899,12 @@ function Update()
 	refresh(minute ~= lastMinute)
 	lastMinute = minute
 	if not display then return 0 end
+	-- Umstieg auf die eigene Reihenfolge (1.3.0): Datei einmal so ordnen, wie sie bisher angezeigt wurde
+	if SKIN:GetVariable('ManualOrder') ~= '1' then
+		if sortOnce() then save(); refresh(true) end
+		SKIN:Bang('!SetVariable', 'ManualOrder', '1')
+		SKIN:Bang('!WriteKeyValue', 'Variables', 'ManualOrder', '1', '#@#prefs.inc')
+	end
 	if rollRecurring() then save(); refresh(true) end
 	checkReminders()
 	return #display
@@ -789,6 +968,78 @@ function ToggleNotes(i)
 	render(lastOpen, lastDone)
 end
 
+-- ---------- Punkte per Ziehen verschieben ----------
+-- Druecken auf den Text eines offenen Punkts (DragStart) blendet unsichtbare Ablageflaechen ueber allen Zeilen
+-- ein (Drop1..n, darunter DropAll fuer den Rest der Liste). Die Flaeche unter der Maus zeigt per Linie, wo der
+-- Punkt landet (DragOver); Loslassen darauf verschiebt ihn (DragDrop). Loslassen auf der eigenen Zeile ohne
+-- Bewegung = normaler Klick (abhaken). Loslassen woanders oder Maus raus = abbrechen (DragCancel).
+local drag
+local function dragHide()
+	SKIN:Bang('!HideMeter', 'DropAll')
+	SKIN:Bang('!HideMeter', 'DropLine')
+	for k = 1, maxItems do SKIN:Bang('!HideMeter', 'Drop' .. k) end
+	SKIN:Bang('!UpdateMeter', '*')
+	SKIN:Bang('!Redraw')
+end
+function DragStart(i)
+	local t = display and display[i]
+	if not t or t.done or edit or collapsed then return end
+	drag = { from = i, to = i, moved = false, line = t.line, orig = lines[t.line] }
+	SKIN:Bang('!SetOption', 'DropAll', 'H', lastBgH or 400)
+	SKIN:Bang('!ShowMeter', 'DropAll')
+	for k = 1, maxItems do
+		if display[k] and itemY[k] and itemBot[k] then
+			SKIN:Bang('!SetOption', 'Drop' .. k, 'Y', itemY[k])
+			SKIN:Bang('!SetOption', 'Drop' .. k, 'H', math.max(itemBot[k] - itemY[k], 1))
+			SKIN:Bang('!ShowMeter', 'Drop' .. k)
+		else
+			SKIN:Bang('!HideMeter', 'Drop' .. k)
+		end
+	end
+	SKIN:Bang('!UpdateMeter', '*')
+	SKIN:Bang('!Redraw')
+end
+function DragOver(j)
+	if not drag then return end
+	if j ~= drag.from then drag.moved = true end
+	local to = j
+	if not display[to] or display[to].done then
+		-- auf einen erledigten Punkt gezogen: hinter den letzten offenen
+		to = nil
+		for k = 1, maxItems do if display[k] and not display[k].done and itemY[k] then to = k end end
+	end
+	if not to then return end
+	drag.to = to
+	if to == drag.from then
+		SKIN:Bang('!HideMeter', 'DropLine')
+	else
+		SKIN:Bang('!SetOption', 'DropLine', 'Y', to > drag.from and (itemBot[to] - 2) or (itemY[to] - 1))
+		SKIN:Bang('!ShowMeter', 'DropLine')
+	end
+	SKIN:Bang('!UpdateMeter', 'DropLine')
+	SKIN:Bang('!Redraw')
+end
+function DragCancel()
+	if not drag then return end
+	drag = nil
+	dragHide()
+end
+function DragDrop(j)
+	local d = drag
+	drag = nil
+	dragHide()
+	if not d then return end
+	if j == d.from and not d.moved then return Toggle(d.from) end
+	if d.to == d.from then return end
+	local target = display[d.to]
+	if not target then return end
+	local toLine, toOrig = target.line, lines[target.line]
+	refresh(true)
+	local a, b = findTask(d.line, d.orig), findTask(toLine, toOrig)
+	if not a or not b or a.done or b.done then return end
+	if moveTask(a, b) then save(); refresh(true) end
+end
+
 -- Zeilen hinter den letzten Todo-Punkt (samt Notizen) einfuegen, sonst ans Ende (vor eine leere Schlusszeile)
 local function insertAtEnd(block)
 	local pos = 0
@@ -826,12 +1077,15 @@ function OpenDialog(i, top)
 		dialog = { mode = 'edit', line = t.line, orig = lines[t.line] }
 		local h, mi = timeOf(t.text)
 		local rule = ruleOf(t.text)
-		f = { 'mode=edit', 'title=' .. trim(stripDue(stripStamps(t.text))),
+		f = { 'mode=edit', 'title=' .. trim(stripTags(stripDue(stripStamps(t.text)))),
 			'date=' .. (t.text:match(dueIcon .. '%s*(' .. DATE .. ')') or ''),
 			'time=' .. (h and string.format('%02d:%02d', h, mi) or ''),
 			'rule=' .. (rule and (RULES[rule] or rule) or '') }
 		for _, n in ipairs(t.notes) do f[#f + 1] = 'note=' .. n end
+		for _, g in ipairs(tagsOf(t.text)) do f[#f + 1] = 'tag=' .. g end
 	end
+	-- angelegte Tags mit Farbe fuers Formular (es liest prefs.inc nicht selbst: dort steht auch die Listenbreite)
+	for part in (SKIN:GetVariable('Tags') or ''):gmatch('[^,]+') do f[#f + 1] = 'tagdef=' .. trim(part) end
 	local out = io.open(SKIN:GetVariable('@') .. 'dialog-in.txt', 'wb')
 	if not out then dialog = nil return end
 	out:write(table.concat(f, '\n'))
@@ -849,7 +1103,7 @@ function DialogDone()
 	local d = dialog
 	dialog = nil
 	if not d then return end
-	local r, notes = {}, {}
+	local r, notes, tags = {}, {}, {}
 	local fh = io.open(SKIN:GetVariable('@') .. 'form-out.txt', 'rb')
 	if not fh then return end
 	local out = fh:read('*a')
@@ -860,6 +1114,9 @@ function DialogDone()
 		if k == 'note' then
 			v = trim(v)
 			if v ~= '' then notes[#notes + 1] = v end
+		elseif k == 'tag' then
+			v = trim(v):gsub('^#+', ''):gsub('%s+', '-')
+			if v ~= '' and v:match('%D') then tags[#tags + 1] = v end
 		elseif k then r[k] = trim(v) end
 	end
 	if r.action ~= 'save' and r.action ~= 'delete' then return end
@@ -878,7 +1135,8 @@ function DialogDone()
 	end
 
 	if (r.title or '') == '' then return end
-	local text = r.title
+	local text = trim(stripTags(r.title))
+	for _, g in ipairs(tags) do text = text .. ' #' .. g end
 	if (r.rule or '') ~= '' then text = text .. ' ' .. repeatIcon .. ' ' .. r.rule end
 	if (r.time or '') ~= '' then text = text .. ' ' .. timeIcon .. ' ' .. r.time end
 	if (r.date or '') ~= '' then text = text .. ' ' .. dueIcon .. ' ' .. r.date end
@@ -887,7 +1145,8 @@ function DialogDone()
 		text = text .. stamp(createdIcon)
 		local block = { '- [ ] ' .. text }
 		for _, n in ipairs(notes) do block[#block + 1] = '    - ' .. n end
-		insertAtEnd(block)
+		-- mit Datum: oben nach Faelligkeit einsortieren, sonst ans Ende
+		if (r.date or '') == '' or not placeDated(block, dueTimeOf(text)) then insertAtEnd(block) end
 		if #notes > 0 then expanded[text] = true end
 	else
 		-- Punkt neu zusammensetzen: Kopfzeile, Unteraufgaben wie gehabt, dann die Notizen aus dem Formular
@@ -898,7 +1157,15 @@ function DialogDone()
 		for _, n in ipairs(notes) do block[#block + 1] = indent .. '    - ' .. n end
 		if expanded[t.text] then expanded[text] = true end
 		for k = t.last, t.line, -1 do table.remove(lines, k) end
-		for k, l in ipairs(block) do table.insert(lines, t.line + k - 1, l) end
+		-- Termin geaendert: offenen Punkt neu nach Faelligkeit einsortieren, sonst bleibt er an seinem Platz
+		local moved = false
+		if not t.done and indent == '' and (r.date or '') ~= '' and dueTimeOf(text) ~= dueTimeOf(t.text) then
+			reparse()
+			moved = placeDated(block, dueTimeOf(text))
+		end
+		if not moved then
+			for k, l in ipairs(block) do table.insert(lines, t.line + k - 1, l) end
+		end
 	end
 	save()
 	refresh(true)

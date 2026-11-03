@@ -60,6 +60,43 @@ Rectangle {
     Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
     Kirigami.Theme.inherit: false
 
+    // ---------- Punkte verschieben (Ziehen in TaskRow) ----------
+    property int dragFrom: -1
+    property int dragTo: -1
+    function dragStart(i) { dragFrom = i; dragTo = i; app.editing = true; }   // waehrenddessen nicht neu aufbauen
+    // Zielplatz = offener Punkt unter der Maus (oberhalb des ersten -> erster, unterhalb des letzten -> letzter)
+    function dragMove(scenePos) {
+        if (dragFrom < 0) return;
+        var p = rowsCol.mapFromItem(null, scenePos.x, scenePos.y);
+        var target = -1;
+        for (var i = 0; i < rowsRep.count; i++) {
+            var it = rowsRep.itemAt(i);
+            if (!it || app.rows[i].done) continue;
+            if (target < 0 || p.y >= it.y) target = i;
+        }
+        if (target >= 0) dragTo = target;
+    }
+    function dragEnd() {
+        var from = dragFrom, to = dragTo;
+        dragFrom = -1; dragTo = -1;
+        app.editing = false;
+        if (from < 0 || to < 0 || from === to) return;
+        var a = app.rows[from], b = app.rows[to];
+        if (a && b) app.moveTask(a.line, a.orig, b.line, b.orig);
+    }
+    // Linie, wo der Punkt landet: nach unten gezogen unter dem Ziel, nach oben darueber
+    Rectangle {
+        z: 10
+        visible: view.dragFrom >= 0 && view.dragTo >= 0 && view.dragTo !== view.dragFrom
+        readonly property var target: visible ? rowsRep.itemAt(view.dragTo) : null
+        x: col.x + rowsCol.x
+        width: rowsCol.width
+        height: 3
+        radius: 1.5
+        color: P.check(Plasmoid.configuration.accent)
+        y: target ? col.y + rowsCol.y + (view.dragTo > view.dragFrom ? target.y + target.height : target.y) - 1 : 0
+    }
+
     implicitWidth: Kirigami.Units.gridUnit * 24
     implicitHeight: col.implicitHeight + Kirigami.Units.largeSpacing * 2
     Layout.preferredWidth: implicitWidth
@@ -142,16 +179,20 @@ Rectangle {
 
         // ---------- Punkte ----------
         ColumnLayout {
+            id: rowsCol
             visible: (!view.app.collapsed || view.inPanel) && !view.app.configMissing
             Layout.fillWidth: true
             spacing: 0
 
             Repeater {
+                id: rowsRep
                 model: view.app.rows
                 delegate: TaskRow {
                     Layout.fillWidth: true
                     app: view.app
                     row: modelData
+                    list: view
+                    rowIndex: index
                 }
             }
 

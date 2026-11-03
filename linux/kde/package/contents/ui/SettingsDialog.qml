@@ -223,6 +223,51 @@ Window {
                         current: dlg.cfg.accent
                         onPicked: v => dlg.cfg.accent = v
                     }
+                    // ----- Tags: anlegen, Farbe wechseln (Klick auf den Tag), loeschen (×) -----
+                    Setting { caption: "Tags"; options: [] }
+                    Flow {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Kirigami.Units.smallSpacing
+                        spacing: Kirigami.Units.smallSpacing * 1.5
+                        visible: dlg.app.tagList.length > 0
+                        Repeater {
+                            model: dlg.app.tagList
+                            delegate: Row {
+                                spacing: 2
+                                Chip {
+                                    text: "● " + modelData.name
+                                    textColor: P.tagText(modelData.color)
+                                    fill: hovered ? P.chipHover : P.tagFill(modelData.color)
+                                    border.color: P.tagDot(modelData.color)
+                                    onClicked: dlg.app.cycleTagColor(modelData.name)
+                                }
+                                Chip {
+                                    iconName: "window-close"
+                                    textColor: P.done
+                                    onClicked: dlg.app.removeTag(modelData.name)
+                                }
+                            }
+                        }
+                    }
+                    RowLayout {
+                        Layout.topMargin: Kirigami.Units.smallSpacing
+                        Layout.fillWidth: true
+                        spacing: Kirigami.Units.smallSpacing * 1.5
+                        PC3.TextField {
+                            id: tagField
+                            Layout.fillWidth: true
+                            placeholderText: "Neuer Tag, z. B. Arbeit"
+                            leftPadding: Kirigami.Units.largeSpacing
+                            topPadding: Kirigami.Units.smallSpacing * 2
+                            bottomPadding: Kirigami.Units.smallSpacing * 2
+                            color: P.text
+                            placeholderTextColor: P.done
+                            background: Rectangle { radius: Kirigami.Units.gridUnit * 0.4; color: P.field; border.width: 1; border.color: tagField.activeFocus ? P.check(dlg.cfg.accent) : P.fieldBorder }
+                            onAccepted: if (dlg.app.addTag(text)) text = ""
+                        }
+                        Chip { text: "Hinzufügen"; onClicked: { if (dlg.app.addTag(tagField.text)) tagField.text = ""; } }
+                    }
+                    Small { text: "Klick auf einen Tag wechselt seine Farbe. Zuweisen im Formular (neuer Punkt / Rechtsklick). In der Datei steht er als #tag." }
                 }
                 // ----- rechte Spalte: Verhalten -----
                 ColumnLayout {
@@ -283,6 +328,29 @@ Window {
                         current: dlg.cfg.autoUpdate
                         onPicked: v => dlg.cfg.autoUpdate = v
                     }
+                    // von Hand nach Updates suchen; gibt es eins, erscheint der Knopf "Jetzt aktualisieren"
+                    RowLayout {
+                        Layout.topMargin: Kirigami.Units.smallSpacing * 2
+                        spacing: Kirigami.Units.smallSpacing * 1.5
+                        Chip {
+                            text: dlg.app.updateState === "checking" ? "Suche …" : "Nach Updates suchen"
+                            onClicked: if (dlg.app.updateState !== "checking" && dlg.app.updateState !== "installing") dlg.app.checkForUpdates()
+                        }
+                        Chip {
+                            visible: dlg.app.updateState === "available"
+                            selected: true
+                            text: "Jetzt aktualisieren"
+                            onClicked: dlg.app.installUpdate()
+                        }
+                    }
+                    Small {
+                        visible: text !== ""
+                        text: dlg.app.updateState === "current" ? "Du hast die neueste Version (" + dlg.app.version + ")."
+                            : dlg.app.updateState === "available" ? "Version " + dlg.app.updateVersion + " ist da."
+                            : dlg.app.updateState === "installing" ? "Wird installiert – die Liste lädt gleich neu …"
+                            : dlg.app.updateState === "error" ? "Keine Verbindung zu GitHub – bitte später nochmal."
+                            : ""
+                    }
                 }
             }
 
@@ -297,6 +365,7 @@ Window {
                 model: [
                     ["Klick", "Punkt abhaken (nochmal klicken = rückgängig)"],
                     ["Rechtsklick", "Punkt bearbeiten oder löschen"],
+                    ["Ziehen", "Punkt mit der Maus an eine andere Stelle schieben (neue Punkte mit Datum kommen von selbst nach oben)"],
                     ["+ Neuer Punkt", "neuen Punkt anlegen, überall auch mit dem Tastenkürzel (siehe oben)"],
                     ["Enter", "speichert den Punkt sofort (Datum vorher wählen oder später ergänzen)"],
                     ["Titel „Todo“", "Liste in Obsidian öffnen"],

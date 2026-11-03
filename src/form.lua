@@ -18,6 +18,18 @@ local WD = { 'Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag
 local RULES = { '', 'täglich', 'werktags', 'wöchentlich', 'monatlich', 'jährlich' }
 local TIMES = { '09:00', '12:00', '15:00', '18:00', '21:00' }
 local MAXNOTES = 8
+-- Tags: angelegt in den Einstellungen (kommen als "tagdef=name:farbe" mit), zugewiesen in f.tags
+local MAXTAGDEFS = 8
+local tagdefs = {}
+local TAGCOL = {
+	lila = { '138,108,245', '165,185,255' }, blau = { '60,130,240', '140,190,255' },
+	gruen = { '50,170,100', '140,220,170' }, orange = { '235,135,40', '255,195,130' },
+	rot = { '220,70,70', '255,160,160' }, pink = { '220,80,165', '255,165,215' },
+	grau = { '140,140,154', '210,210,220' },
+}
+local function hasTag(name)
+	for i, t in ipairs(f.tags) do if t:lower() == name:lower() then return i end end
+end
 local CW = 74                 -- Breite einer Kalenderspalte
 local MONTHS3 = { 'Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez' }
 local UNITS = { 'Tage', 'Wochen', 'Monate', 'Jahre' }
@@ -68,13 +80,19 @@ function Initialize()
 	for _, k in ipairs({ 'ColorText', 'ColorNote', 'ColorDone', 'ColorAccent', 'ColorCheck', 'ColorOver' }) do
 		c[k] = SKIN:GetVariable(k)
 	end
-	f = { mode = 'new', title = '', rule = '', notes = {} }
+	f = { mode = 'new', title = '', rule = '', notes = {}, tags = {} }
+	tagdefs = {}
 	local fh = io.open(res .. 'dialog-in.txt', 'rb')
 	if fh then
 		for l in fh:read('*a'):gmatch('[^\r\n]+') do
 			local k, v = l:match('^(%w+)=(.*)$')
 			if k == 'note' then
 				f.notes[#f.notes + 1] = v
+			elseif k == 'tag' then
+				f.tags[#f.tags + 1] = v
+			elseif k == 'tagdef' then
+				local name, col = v:match('^%s*(.-):(%a+)%s*$')
+				if name and name ~= '' and #tagdefs < MAXTAGDEFS then tagdefs[#tagdefs + 1] = { name = name, color = col } end
 			elseif k == 'date' then
 				local y, m, d = v:match('(%d+)%-(%d+)%-(%d+)')
 				if y then f.date = dayOf(tonumber(y), tonumber(m), tonumber(d)) end
@@ -308,6 +326,30 @@ local function render()
 		for k = 1, 7 do show('CustWd' .. k, false) end
 	end
 
+	-- Tags (Knoepfe in Zeilen, umbrechen wenn die Breite nicht reicht); ausgewaehlt = in der Farbe des Tags
+	set('LblTags', 'Y', y); y = y + 24
+	local tx = 20
+	for k = 1, MAXTAGDEFS do
+		local d, m = tagdefs[k], 'TagChip' .. k
+		if d then
+			local col = TAGCOL[d.color] or TAGCOL.grau
+			local on = hasTag(d.name) ~= nil
+			set(m, 'Text', d.name)
+			SKIN:Bang('!UpdateMeter', m)
+			local w = SKIN:GetMeter(m):GetW()
+			if tx > 20 and tx + w > width - 20 then tx = 20; y = y + 44 end
+			set(m, 'X', tx); set(m, 'Y', y)
+			show(m, true)
+			set(m, 'FontColor', on and c.ColorText or (col[2] .. ',255'))
+			chips[#chips + 1] = { m, on, on and (col[1] .. ',255') or '255,255,255,16' }
+			tx = tx + w + 6
+		else
+			show(m, false)
+		end
+	end
+	show('TagHint', #tagdefs == 0)
+	if #tagdefs == 0 then set('TagHint', 'Y', y); y = y + 34 else y = y + 44 end
+
 	-- Zusammenfassung
 	set('Summary', 'Y', y)
 	set('Summary', 'Text', summary())
@@ -354,7 +396,7 @@ local function render()
 	for _, ch in ipairs(chips) do
 		local m, sel = ch[1], ch[2]
 		if not (m == 'NoteAdd' or m == 'FileAdd') or #f.notes < MAXNOTES then
-			box(m, sel and c.ColorCheck or '255,255,255,16')
+			box(m, ch[3] or (sel and c.ColorCheck or '255,255,255,16'))
 		end
 	end
 	for _, cell in ipairs(calCells) do
@@ -463,6 +505,7 @@ local function finish(action)
 		out[#out + 1] = 'time=' .. (f.time or '')
 		out[#out + 1] = 'rule=' .. f.rule
 		for _, n in ipairs(f.notes) do out[#out + 1] = 'note=' .. n end
+		for _, t in ipairs(f.tags) do out[#out + 1] = 'tag=' .. t end
 	end
 	local fh = io.open(res .. 'form-out.txt', 'wb')
 	if fh then fh:write(table.concat(out, '\n')); fh:close() end
@@ -528,6 +571,12 @@ function Click(what, arg)
 	elseif what == 'rule' then f.rule = RULES[arg]; custOpen = false; if f.rule ~= '' then needDate() end
 	elseif what == 'note' then return openInput('note', f.notes[arg], 'Note' .. arg, arg)
 	elseif what == 'notedel' then table.remove(f.notes, arg)
+	elseif what == 'tag' then
+		local d = tagdefs[arg]
+		if d then
+			local i = hasTag(d.name)
+			if i then table.remove(f.tags, i) else f.tags[#f.tags + 1] = d.name end
+		end
 	elseif what == 'noteadd' then return openInput('note', '', 'NoteAdd', #f.notes + 1)
 	elseif what == 'file' then return SKIN:Bang('!CommandMeasure', 'MeasureFilePick', 'Run')
 	elseif what == 'cancel' then return SKIN:Bang('!DeactivateConfig')

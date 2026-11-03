@@ -192,7 +192,32 @@ function shortPath(note) {
     return m ? m[1] : p;
 }
 function noteText(note) { return isPath(note) ? shortPath(note) : shortLinks(pretty(note)); }
-function taskText(text) { return trim(shortLinks(pretty(stripDue(stripStamps(text))))); }
+function taskText(text) { return trim(shortLinks(pretty(stripTags(stripDue(stripStamps(text)))))); }
+
+// ---------- Tags (Obsidian-Schreibweise "#arbeit" in der Zeile) ----------
+// Ein Tag beginnt nach Zeilenanfang oder Leerzeichen mit #, enthaelt keine Leer-/Satzzeichen und nicht nur Ziffern.
+var TAG_RE = /(^|\s)#([^\s#.,;:!?()\[\]{}"'<>]+)/g;
+function tagsOf(text) {
+    var out = [], m;
+    TAG_RE.lastIndex = 0;
+    while ((m = TAG_RE.exec(text))) if (/\D/.test(m[2]) && out.indexOf(m[2]) < 0) out.push(m[2]);
+    return out;
+}
+function stripTags(text) {
+    return text.replace(TAG_RE, function (all, pre, name) { return /\D/.test(name) ? pre : all; }).replace(/\s{2,}/g, ' ');
+}
+// Tag-Name aus einer Eingabe: ohne #, Leerzeichen -> Bindestrich
+function cleanTag(s) { return trim(String(s || '')).replace(/^#+/, '').replace(/\s+/g, '-').replace(/[#.,;:!?()\[\]{}"'<>]/g, ''); }
+// Tag-Liste aus der Einstellung "arbeit:blau,privat:pink" -> [{ name, color }]
+function parseTagConf(s) {
+    var out = [];
+    String(s || '').split(',').forEach(function (p) {
+        var i = p.lastIndexOf(':'), name = cleanTag(i > 0 ? p.substring(0, i) : p), color = i > 0 ? trim(p.substring(i + 1)) : 'grau';
+        if (name && /\D/.test(name)) out.push({ name: name, color: color || 'grau' });
+    });
+    return out;
+}
+function tagConfString(list) { return list.map(function (t) { return t.name + ':' + t.color; }).join(','); }
 
 // erster Link einer Notiz: Webadresse, [[Obsidian-Notiz]] oder Pfad
 function linkOf(note, vault, home) {
@@ -237,14 +262,86 @@ function parse(content) {
             current = null;
         }
     }
-    // offene Punkte mit Datum nach Faelligkeit zuerst, dann die ohne Datum in Dateireihenfolge
-    open.forEach(function (t, k) {
-        t.order = k;
-        var d = dueOf(t.text), tm = timeOf(t.text);
-        t.dueTime = d ? d.getTime() + (tm ? (tm.h - 12) * 3600000 + tm.m * 60000 : 0) : Infinity;
-    });
-    open.sort(function (a, b) { return a.dueTime !== b.dueTime ? (a.dueTime < b.dueTime ? -1 : 1) : a.order - b.order; });
+    // Reihenfolge = Reihenfolge in der Datei (eigene Reihenfolge per Ziehen); neue Punkte mit Datum
+    // werden beim Anlegen nach Faelligkeit oben einsortiert (placeDated), erledigte stehen darunter
+    open.concat(done).forEach(function (t) { t.dueTime = dueTimeOf(t.text); t.tags = tagsOf(t.text); });
     return { bom: bom, nl: nl, lines: lines, display: open.concat(done), openCount: open.length, doneCount: done.length };
+}
+// Faelligkeit als Zahl (Datum + Uhrzeit), ohne Datum Infinity
+function dueTimeOf(text) {
+    var d = dueOf(text), tm = timeOf(text);
+    return d ? d.getTime() + (tm ? (tm.h - 12) * 3600000 + tm.m * 60000 : 0) : Infinity;
+}
+// model.display usw. nach Aenderungen an model.lines neu bestimmen
+function reparse(model) {
+    var p = parse(model.lines.join('\n'));
+    model.display = p.display; model.openCount = p.openCount; model.doneCount = p.doneCount;
+}
+
+// Einmalig beim Umstieg auf die eigene Reihenfolge: offene Punkte in der Datei so ordnen, wie sie bisher
+// angezeigt wurden (mit Datum nach Faelligkeit zuerst). Erledigte bleiben an ihrem Platz. true = geaendert
+function sortOnce(model) {
+    var all = model.display.slice().sort(function (a, b) { return a.line - b.line; });
+    var lines = model.lines, changed = false, out = [], pos = 0;
+    var k = 0;
+    while (k < all.length) {
+        // zusammenhaengender Lauf: zwischen den Punkten nur Leerzeilen
+        var run = [all[k]];
+        while (k + 1 < all.length && all[k + 1].line > all[k].last && lines.slice(all[k].last + 1, all[k + 1].line).every(function (l) { return /^\s*$/.test(l); })
+               && all[k + 1].indent === all[k].indent) { k++; run.push(all[k]); }
+        k++;
+        var open = run.filter(function (t) { return !t.done; });
+        var sorted = open.map(function (t, i) { return { t: t, i: i }; })
+            .sort(function (a, b) { return a.t.dueTime !== b.t.dueTime ? (a.t.dueTime < b.t.dueTime ? -1 : 1) : a.i - b.i; })
+            .map(function (x) { return x.t; });
+        if (sorted.every(function (t, i) { return t === open[i]; })) continue;
+        changed = true;
+        // Zeilen vor dem Lauf uebernehmen, dann die Bloecke in neuer Reihenfolge (Luecken bleiben an ihrer Stelle)
+        for (; pos < run[0].line; pos++) out.push(lines[pos]);
+        var oi = 0;
+        run.forEach(function (slot, si) {
+            var t = slot.done ? slot : sorted[oi++];
+            for (var x = t.line; x <= t.last; x++) out.push(lines[x]);
+            var gapEnd = si + 1 < run.length ? run[si + 1].line : slot.last + 1;
+            for (x = slot.last + 1; x < gapEnd; x++) out.push(lines[x]);
+        });
+        pos = run[run.length - 1].last + 1;
+    }
+    if (!changed) return false;
+    for (; pos < lines.length; pos++) out.push(lines[pos]);
+    model.lines = out;
+    reparse(model);
+    return true;
+}
+
+// Block (Zeilen) eines Punkts mit Datum nach Faelligkeit zwischen die anderen offenen Punkte mit Datum
+// einsortieren: vor den ersten, der spaeter faellig ist, sonst hinter den letzten. Gibt es noch keinen
+// Punkt mit Datum, kommt er ganz nach oben. Selbst verschobene Punkte ohne Datum bleiben so, wo sie sind.
+function placeDated(model, block, dueTime) {
+    var at = -1, lastDated = null, first = null;
+    for (var i = 0; i < model.display.length; i++) {
+        var t = model.display[i];
+        if (t.done || t.indent > 0) continue;
+        if (!first) first = t;
+        if (t.dueTime === Infinity) continue;
+        if (t.dueTime > dueTime) { at = t.line; break; }
+        lastDated = t;
+    }
+    if (at < 0 && lastDated) at = lastDated.last + 1;
+    if (at < 0 && first) at = first.line;
+    if (at < 0) { insertAtEnd(model, block); return; }
+    for (var k = 0; k < block.length; k++) model.lines.splice(at + k, 0, block[k]);
+}
+
+// Punkt "from" an die Stelle von "to" verschieben (beide offene Punkte). Nach unten: hinter "to", nach oben: davor.
+function moveTask(model, from, to) {
+    if (!from || !to || from === to) return false;
+    var lines = model.lines, n = from.last - from.line + 1;
+    var block = lines.splice(from.line, n);
+    var at = to.line > from.line ? to.last - n + 1 : to.line;
+    for (var k = 0; k < block.length; k++) lines.splice(at + k, 0, block[k]);
+    reparse(model);
+    return true;
 }
 
 function serialize(model) { return model.bom + model.lines.join(model.nl); }
@@ -287,7 +384,8 @@ function insertAtEnd(model, block) {
 
 // Formular -> Kopfzeile "Titel 🔁 regel ⏰ zeit 📅 datum"
 function formText(form) {
-    var text = trim(form.title || '');
+    var text = trim(stripTags(form.title || ''));
+    (form.tags || []).forEach(function (t) { t = cleanTag(t); if (t) text += ' #' + t; });
     if (form.rule) text += ' ' + ICON.repeat + ' ' + form.rule;
     if (form.time) text += ' ' + ICON.time + ' ' + form.time;
     if (form.date) text += ' ' + ICON.due + ' ' + form.date;
@@ -297,21 +395,22 @@ function formText(form) {
 // Formularwerte eines vorhandenen Punkts
 function formOf(t) {
     var tm = timeOf(t.text), r = ruleOf(t.text);
-    return { title: trim(stripDue(stripStamps(t.text))), date: dueIsoOf(t.text), time: timeStr(tm),
-        rule: r ? normRule(r) : '', notes: t.notes.slice() };
+    return { title: trim(stripTags(stripDue(stripStamps(t.text)))), date: dueIsoOf(t.text), time: timeStr(tm),
+        rule: r ? normRule(r) : '', notes: t.notes.slice(), tags: tagsOf(t.text) };
 }
 
-// neuer Punkt aus dem Formular; gibt den neuen Text zurueck
+// neuer Punkt aus dem Formular; gibt den neuen Text zurueck. Mit Datum: oben nach Faelligkeit einsortiert.
 function addTask(model, form, now) {
     if (form.time || form.rule) { if (!form.date) form.date = iso(today(now)); }
     var text = formText(form) + stamp(ICON.created, now);
     var block = ['- [ ] ' + text];
     (form.notes || []).forEach(function (n) { n = trim(n); if (n) block.push('    - ' + n); });
-    insertAtEnd(model, block);
+    if (form.date) placeDated(model, block, dueTimeOf(text)); else insertAtEnd(model, block);
     return text;
 }
 
-// vorhandenen Punkt aus dem Formular neu zusammensetzen (Unteraufgaben bleiben)
+// vorhandenen Punkt aus dem Formular neu zusammensetzen (Unteraufgaben bleiben).
+// Hat sich der Termin geaendert, wird ein offener Punkt neu nach Faelligkeit einsortiert; sonst bleibt er, wo er ist.
 function editTask(model, t, form) {
     if ((form.time || form.rule) && !form.date) form.date = iso(today());
     var lines = model.lines;
@@ -321,7 +420,13 @@ function editTask(model, t, form) {
     t.subs.forEach(function (s) { block.push(lines[s.line]); });
     (form.notes || []).forEach(function (n) { n = trim(n); if (n) block.push(indent + '    - ' + n); });
     lines.splice(t.line, t.last - t.line + 1);
-    for (var k = 0; k < block.length; k++) lines.splice(t.line + k, 0, block[k]);
+    var newDue = dueTimeOf(text);
+    if (!t.done && indent === '' && form.date && newDue !== dueTimeOf(t.text)) {
+        reparse(model);
+        placeDated(model, block, newDue);
+    } else {
+        for (var k = 0; k < block.length; k++) lines.splice(t.line + k, 0, block[k]);
+    }
     return text;
 }
 

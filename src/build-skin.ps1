@@ -48,7 +48,7 @@ ContextTitle=Todo.md in Obsidian öffnen
 ContextAction=$obs
 ; Seitenleiste: Maus in der Liste haelt sie offen, Verlassen laesst sie hinausfahren (sidebar.lua)
 MouseOverAction=[!CommandMeasure MeasureSide "Enter()" "ObsidianTodo\Rand"]
-MouseLeaveAction=[!CommandMeasure MeasureSide "Leave()" "ObsidianTodo\Rand"]
+MouseLeaveAction=[!CommandMeasure MeasureSide "Leave()" "ObsidianTodo\Rand"][!CommandMeasure MeasureTodo "DragCancel()"]
 
 [Metadata]
 Name=Obsidian Todo
@@ -80,6 +80,10 @@ RemindOn=1
 RemindLead=0
 AutoUpdate=1
 Hotkey=
+; eigene Tags mit Farbe (Einstellungen): "arbeit:blau,privat:pink"
+Tags=
+; 1 = Datei wurde einmal nach der alten Anzeige sortiert (seit 1.3.0 gilt die Reihenfolge in der Datei)
+ManualOrder=0
 Accent=lila
 Opacity=218
 ; Symbol-Knoepfe (Zahnrad, Pfeil, Bueroklammer): dunkler und deckender als die Liste
@@ -326,7 +330,14 @@ MouseLeaveAction=[!SetOption $name SolidColor "0,0,0,1"][!UpdateMeter $name][!Re
 "@
 }
 for ($i = 1; $i -le 15; $i++) {
-    $ini += CheckMeter "Item$i" 12 '#RowH#' '#FontSize#' 600 "[!CommandMeasure MeasureTodo `"Toggle($i)`"]" "[!CommandMeasure MeasureTodo `"Edit($i)`"]" 'Linksklick: abhaken | Rechtsklick: bearbeiten'
+    # Druecken auf den Text startet das Ziehen (todo.lua DragStart); ein normaler Klick hakt trotzdem ab
+    $ini += (CheckMeter "Item$i" 12 '#RowH#' '#FontSize#' 600 "[!CommandMeasure MeasureTodo `"Toggle($i)`"]" "[!CommandMeasure MeasureTodo `"Edit($i)`"]" 'Linksklick: abhaken | Rechtsklick: bearbeiten').Replace(
+        "[Item$i]`r`nMeter=String", "[Item$i]`r`nMeter=String`r`nLeftMouseDownAction=[!CommandMeasure MeasureTodo `"DragStart($i)`"]").Replace(
+        "[Item$i]`nMeter=String", "[Item$i]`nMeter=String`nLeftMouseDownAction=[!CommandMeasure MeasureTodo `"DragStart($i)`"]")
+    # Tags als farbige Etiketten hinter dem Text (Text, Farben und Position setzt todo.lua)
+    for ($k = 1; $k -le 3; $k++) {
+        $ini += "[Tag${i}_$k]`r`nMeter=String`r`nDynamicVariables=1`r`nHidden=1`r`nX=0`r`nY=0`r`nPadding=8,3,8,4`r`nFontFace=#FontFace#`r`nFontSize=(#FontSize#-3)`r`nFontWeight=600`r`nFontColor=255,255,255,255`r`nSolidColor=0,0,0,0`r`nAntiAlias=1`r`nText=`r`n`r`n"
+    }
 }
 for ($i = 1; $i -le 30; $i++) {
     $ini += CheckMeter "Sub$i" 36 '#NoteH#' '(#FontSize#-1)' 500 "[!CommandMeasure MeasureTodo `"ToggleSub($i)`"]" "[!CommandMeasure MeasureTodo `"EditSub($i)`"]" 'Unteraufgabe - Linksklick: abhaken | Rechtsklick: bearbeiten'
@@ -502,6 +513,34 @@ SolidColor=0,0,0,1
 AntiAlias=1
 Text=Erledigte archivieren
 LeftMouseUpAction=[!CommandMeasure MeasureTodo "Cleanup()"]
+
+; ---------- Ziehen (todo.lua DragStart/DragOver/DragDrop): nur waehrend des Ziehens sichtbar, ganz oben ----------
+; DropAll faengt das Loslassen ausserhalb der Zeilen ab (= abbrechen), Drop1..15 liegen ueber den Zeilen
+[DropAll]
+Meter=Image
+Hidden=1
+X=0
+Y=0
+W=#Width#
+H=400
+SolidColor=0,0,0,1
+LeftMouseUpAction=[!CommandMeasure MeasureTodo "DragCancel()"]
+
+"@
+for ($i = 1; $i -le 15; $i++) {
+    $ini += "[Drop$i]`r`nMeter=Image`r`nHidden=1`r`nX=0`r`nY=0`r`nW=#Width#`r`nH=1`r`nSolidColor=0,0,0,1`r`nMouseOverAction=[!CommandMeasure MeasureTodo `"DragOver($i)`"]`r`nLeftMouseUpAction=[!CommandMeasure MeasureTodo `"DragDrop($i)`"]`r`n`r`n"
+}
+$ini += @"
+; Linie, wo der gezogene Punkt landet
+[DropLine]
+Meter=Image
+Hidden=1
+DynamicVariables=1
+X=12
+Y=0
+W=(#Width#-24)
+H=3
+SolidColor=#ColorCheck#
 "@
 
 $ini = [regex]::Replace($ini, '(?m)^(\[(?!Rainmeter\]|Metadata\]|Variables\]|Measure|MeterBg\]|MeterTitle\]|MeterCount\]|MeterFold\]|MeterHelp\]|GearBtn\]|FoldBtn\])[^\]]+\]\r?\n)', '$1Group=List'+"`r`n")
@@ -962,6 +1001,23 @@ Text=oder an bestimmten Wochentagen:
 
 "@
 for ($k = 1; $k -le 7; $k++) { $form += Chip "CustWd$k" $(if ($k -eq 1) { 20 } else { '6R' }) $(if ($k -eq 1) { 0 } else { 'r' }) $wd[$k-1] "Click('custwd', $k)" }
+# Tags: ein Knopf pro Tag aus den Einstellungen (X/Y, Text und Farbe setzt form.lua), an/aus per Klick
+$form += Label 'LblTags' 'Tags'
+for ($k = 1; $k -le 8; $k++) { $form += Chip "TagChip$k" 20 0 '' "Click('tag', $k)" 'Hidden=1' }
+$form += @"
+[TagHint]
+Meter=String
+X=22
+Y=0
+Hidden=1
+FontFace=#FontFace#
+FontSize=10
+FontColor=#ColorDone#
+AntiAlias=1
+Text=Noch keine Tags – anlegen in den Einstellungen (Zahnrad).
+
+
+"@
 $form += @"
 [Summary]
 Meter=String
@@ -1033,6 +1089,7 @@ $helpLines = @(
     '#So funktioniert''s'
     'Klick: Punkt abhaken (nochmal klicken = rückgängig)'
     'Rechtsklick: Punkt bearbeiten oder löschen'
+    'Ziehen: Punkt mit der Maus an eine andere Stelle schieben (neue Punkte mit Datum kommen von selbst nach oben)'
     '+ Neuer Punkt: neuen Punkt anlegen, überall auch mit dem Tastenkürzel (siehe oben)'
     'Enter: speichert den Punkt sofort (Datum vorher wählen oder später ergänzen)'
     'Titel „Todo“: Liste in Obsidian öffnen'
@@ -1116,17 +1173,17 @@ Text=$text
 }
 # kleine Gruppen-Ueberschrift (AUSSEHEN / VERHALTEN) ueber einer Spalte
 function GroupHead($name, $text, $x) {
-"[$name]
-Meter=String
-X=$x
-Y=60
-FontFace=#FontFace#
-FontSize=9
-FontWeight=600
-FontColor=#ColorDone#
-AntiAlias=1
-Text=$text
-
+"[$name]
+Meter=String
+X=$x
+Y=60
+FontFace=#FontFace#
+FontSize=9
+FontWeight=600
+FontColor=#ColorDone#
+AntiAlias=1
+Text=$text
+
 "
 }
 function Small($name, $text, $x, $y = '8R') {
@@ -1201,6 +1258,10 @@ RemindLead=0
 AutoUpdate=1
 HotkeyNow=
 Accent=lila
+Tags=
+NewTag=
+TagInX=0
+TagInY=0
 @IncludePrefs=#@#prefs.inc
 @IncludeHotkey=#@#hotkey.inc
 FontFace=Segoe UI
@@ -1232,6 +1293,48 @@ Parameter=--record
 State=Hide
 Timeout=-1
 FinishAction=[!CommandMeasure MeasureKillHotkey "Run"]
+
+; Tags verwalten und Updates von Hand (settings.lua)
+[MeasureSettings]
+Measure=Script
+ScriptFile=#@#settings.lua
+
+; Name fuer einen neuen Tag (Feld erscheint ueber "+ Neuer Tag")
+[MeasureTagInput]
+Measure=Plugin
+Plugin=InputText
+DynamicVariables=1
+X=#TagInX#
+Y=#TagInY#
+W=200
+H=24
+SolidColor=30,32,39,255
+FontColor=#ColorText#
+FontFace=#FontFace#
+FontSize=11
+FocusDismiss=1
+DefaultValue=
+Command1=[!SetVariable NewTag """`$UserInput`$"""][!CommandMeasure MeasureSettings "AddDone()"]
+
+; "Nach Updates suchen": update.ps1 -Check gibt "neu 1.3.1" / "aktuell 1.3.0" / "fehler" aus
+[MeasureUpdCheck]
+Measure=Plugin
+Plugin=RunCommand
+Program=powershell.exe
+Parameter=-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "#@#update.ps1" -Check
+State=Hide
+OutputType=UTF8
+Timeout=60000
+FinishAction=[!CommandMeasure MeasureSettings "UpdChecked()"]
+
+; "Jetzt aktualisieren": laedt das Setup und installiert sofort (Rainmeter laedt die Liste danach neu)
+[MeasureUpdNow]
+Measure=Plugin
+Plugin=RunCommand
+Program=powershell.exe
+Parameter=-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "#@#update.ps1" -Now
+State=Hide
+Timeout=-1
 
 ; Todo-Datei waehlen (Dateidialog, schreibt settings.inc)
 [MeasureChoose]
@@ -1316,6 +1419,15 @@ foreach ($a in $accents) {
     $opts += , @([string][char]0x25CF, "^$($a[0])$", "$(C Accent $a[0])$(C ColorCheck $a[1])$(C ColorAccent $a[2])$refAll", $a[1], 17)
 }
 $hini += Row 'Accent' 'Akzentfarbe' $colL '22R' '#Accent#' $opts
+# Tags: Liste aus prefs.inc (Tags=name:farbe,...), angeordnet von settings.lua. Klick = Farbe wechseln, × = entfernen
+$hini += Caption 'CapTags' 'Tags' $colL
+$hini += "[TagShapes]`r`nMeter=Shape`r`nShape=Rectangle 0,0,0,0 | StrokeWidth 0`r`n`r`n"
+for ($k = 1; $k -le 8; $k++) {
+    $hini += "[TagS$k]`r`nMeter=String`r`nHidden=1`r`nX=$colL`r`nY=0`r`nPadding=12,7,12,7`r`nFontFace=#FontFace#`r`nFontSize=11`r`nFontWeight=600`r`nFontColor=#ColorNote#`r`nSolidColor=0,0,0,1`r`nAntiAlias=1`r`nText=`r`nLeftMouseUpAction=[!CommandMeasure MeasureSettings `"Cycle($k)`"]`r`n`r`n"
+    $hini += "[TagX$k]`r`nMeter=String`r`nHidden=1`r`nX=$colL`r`nY=0`r`nPadding=11,10,11,9`r`nFontFace=#IconFace#`r`nFontSize=8`r`nFontColor=#ColorDone#`r`nSolidColor=0,0,0,1`r`nAntiAlias=1`r`nText=$close`r`nLeftMouseUpAction=[!CommandMeasure MeasureSettings `"Remove($k)`"]`r`n`r`n"
+}
+$hini += "[TagAdd]`r`nMeter=String`r`nX=$colL`r`nY=0`r`nW=150`r`nPadding=12,7,12,7`r`nFontFace=#FontFace#`r`nFontSize=11`r`nFontWeight=600`r`nFontColor=#ColorAccent#`r`nSolidColor=0,0,0,1`r`nAntiAlias=1`r`nText=+ Neuer Tag`r`nLeftMouseUpAction=[!CommandMeasure MeasureSettings `"AddStart()`"]`r`n`r`n"
+$hini += Small 'TagInfo' 'Klick auf einen Tag wechselt seine Farbe. Zuweisen im Formular (neuer Punkt / Rechtsklick). In der Datei steht er als #tag.' $colL '0'
 $hini += "[LeftEnd]`r`nMeter=Image`r`nX=$colL`r`nY=0R`r`nW=1`r`nH=1`r`n`r`n"
 
 # ----- rechte Spalte: Verhalten -----
@@ -1350,6 +1462,13 @@ $hini += Spacer 'EndFile' $colR
 $hini += Row 'Update' 'Automatische Updates' $colR '22R' '#AutoUpdate#' @(
     @('An', '^1$', "$(P AutoUpdate 1)[!Refresh]"),
     @('Aus', '^0$', "$(P AutoUpdate 0)[!Refresh]"))
+# von Hand nach Updates suchen; gibt es eins, erscheint "Jetzt aktualisieren" (settings.lua)
+$hini += SetChip 'UpdCheck' $colR '12R' 'Nach Updates suchen' '[!CommandMeasure MeasureSettings "CheckUpdates()"]'
+$updNow = SetChip 'UpdNow' ($colR + (BtnWidth 'Nach Updates suchen') + 8) 'r' 'Jetzt aktualisieren' '[!CommandMeasure MeasureSettings "InstallNow()"]'
+$hini += $updNow.Replace("[UpdNow]`r`nMeter=Shape", "[UpdNow]`r`nMeter=Shape`r`nHidden=1").Replace("[UpdNowText]`r`nMeter=String", "[UpdNowText]`r`nMeter=String`r`nHidden=1").Replace("[UpdNow]`nMeter=Shape", "[UpdNow]`nMeter=Shape`nHidden=1").Replace("[UpdNowText]`nMeter=String", "[UpdNowText]`nMeter=String`nHidden=1")
+$hini += "[SelUpdNow]`r`nMeasure=String`r`nString=x`r`nIfMatch=x`r`nIfMatchAction=$($sel -f 'UpdNow')`r`n`r`n"
+$hini += Spacer 'EndUpd' $colR
+$hini += Small 'UpdInfo' ' ' $colR
 $hini += "[RightEnd]`r`nMeter=Image`r`nX=$colR`r`nY=0R`r`nW=1`r`nH=1`r`n`r`n"
 
 # ----- unten ueber die ganze Breite: Kurzhilfe, Archiv, Version -----
@@ -1406,6 +1525,9 @@ FontColor=#ColorDone#
 AntiAlias=1
 Text=Version $Version
 "@
+# Zeilenenden vereinheitlichen (die Ersetzungen hier erwarten CRLF, egal wie diese Datei gespeichert ist)
+$hini = $hini -replace "(?<!`r)`n", "`r`n"
+$script:btnVars = $script:btnVars -replace "(?<!`r)`n", "`r`n"
 # Startwerte der Knopf-Variablen in [Variables] (vor colors.inc)
 $hini = $hini.Replace("ColorHover=255,255,255,22`r`n@IncludeColors", "ColorHover=255,255,255,22`r`n" + $script:btnVars.Replace('#ColorNote#', '200,200,212,255') + "@IncludeColors")
 New-Item -ItemType Directory -Force "$skin\Einstellungen" | Out-Null

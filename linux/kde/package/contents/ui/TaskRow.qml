@@ -11,6 +11,10 @@ ColumnLayout {
     id: taskRow
     property var app
     property var row
+    // Liste (TodoView) und Platz in ihr: zum Verschieben per Ziehen
+    property var list: null
+    property int rowIndex: -1
+    opacity: list && list.dragFrom === rowIndex ? 0.45 : 1
     // laufende Eingabe direkt in der Liste: '' | 'note' | 'sub' | 'addnote' | 'addsub'
     property string editKind: ""
     property int editLine: -1
@@ -47,6 +51,16 @@ ColumnLayout {
             acceptedButtons: Qt.RightButton
             onTapped: taskRow.app.openForm(taskRow.row)
         }
+        // offenen Punkt an eine andere Stelle ziehen (erst nach ein paar Pixeln Bewegung, Klicks bleiben Klicks)
+        DragHandler {
+            id: rowDrag
+            target: null
+            xAxis.enabled: false
+            enabled: !taskRow.row.done && taskRow.list !== null
+            cursorShape: Qt.ClosedHandCursor
+            onActiveChanged: active ? taskRow.list.dragStart(taskRow.rowIndex) : taskRow.list.dragEnd()
+            onCentroidChanged: if (active) taskRow.list.dragMove(centroid.scenePosition)
+        }
 
         RowLayout {
             id: head
@@ -64,7 +78,7 @@ ColumnLayout {
             PC3.Label {
                 id: titleLabel
                 // so breit wie noetig, damit der Termin direkt dahinter steht; lange Texte brechen um
-                Layout.maximumWidth: head.width - checkW - dueRow.implicitWidth - progress.implicitWidth - clip.implicitWidth - head.spacing * 4
+                Layout.maximumWidth: head.width - checkW - dueRow.implicitWidth - tagRow.implicitWidth - progress.implicitWidth - clip.implicitWidth - head.spacing * 5
                 readonly property real checkW: Kirigami.Units.gridUnit
                 text: taskRow.row.title
                 wrapMode: Text.WordWrap
@@ -89,6 +103,31 @@ ColumnLayout {
                     font.weight: Font.DemiBold
                     font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * taskRow.fs
                     color: P.dueColor(taskRow.row.dueState)
+                }
+            }
+            // Tags als farbige Etiketten (Farbe aus den Einstellungen)
+            RowLayout {
+                id: tagRow
+                visible: taskRow.row.tags.length > 0
+                spacing: 4
+                Repeater {
+                    model: taskRow.row.tags
+                    delegate: Rectangle {
+                        radius: Kirigami.Units.gridUnit * 0.3
+                        color: P.tagFill(modelData.color)
+                        border.width: 1
+                        border.color: P.tagFill(modelData.color)
+                        implicitWidth: tagLabel.implicitWidth + Kirigami.Units.smallSpacing * 3
+                        implicitHeight: tagLabel.implicitHeight + 4
+                        PC3.Label {
+                            id: tagLabel
+                            anchors.centerIn: parent
+                            text: modelData.name
+                            color: P.tagText(modelData.color)
+                            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 0.85 * taskRow.fs
+                            font.weight: Font.DemiBold
+                        }
+                    }
                 }
             }
             Item { Layout.fillWidth: true }

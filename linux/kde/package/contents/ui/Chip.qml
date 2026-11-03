@@ -19,6 +19,7 @@ Rectangle {
     property real fontScale: 1.0
     property bool bold: false
     readonly property bool asIcon: iconButton || flat
+    readonly property bool hovered: hov.hovered
     readonly property color accentFill: P.check(Plasmoid.configuration.accent)
     signal clicked()
 
