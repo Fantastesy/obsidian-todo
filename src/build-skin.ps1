@@ -1312,7 +1312,8 @@ SolidColor=30,32,39,255
 FontColor=#ColorText#
 FontFace=#FontFace#
 FontSize=11
-FocusDismiss=1
+; bleibt offen, bis Enter (speichern) oder Esc (abbrechen) - sonst schliesst es sich, sobald es kurz den Fokus verliert
+FocusDismiss=0
 DefaultValue=
 Command1=[!SetVariable NewTag """`$UserInput`$"""][!CommandMeasure MeasureSettings "AddDone()"]
 

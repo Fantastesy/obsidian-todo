@@ -121,6 +121,9 @@ function AddStart()
 	SKIN:Bang('!SetVariable', 'TagInX', m:GetX() + 4)
 	SKIN:Bang('!SetVariable', 'TagInY', m:GetY() + 5)
 	SKIN:Bang('!UpdateMeasure', 'MeasureTagInput')
+	-- "Stay topmost" (ZPos 2) schiebt das Fenster laufend wieder nach vorn und
+	-- verdeckt damit das Eingabefeld; einfaches "Topmost" (1) tut das nicht
+	SKIN:Bang('!ZPos', '1')
 	SKIN:Bang('!CommandMeasure', 'MeasureTagInput', 'ExecuteBatch 1')
 end
 
