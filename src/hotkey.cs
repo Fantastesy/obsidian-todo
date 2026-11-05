@@ -133,14 +133,21 @@ class TodoHotkey : Form
 
     // ---------- Eingabefeld nicht verlieren: TodoHotkey.exe --commit ----------
     // Rainmeters Eingabefeld (InputText, Fenster "InputBox") verwirft den Text, wenn man woanders hinklickt.
-    // Die Skins oeffnen es darum mit FocusDismiss=0 und starten dazu diesen Waechter: Sobald das Feld den
-    // Fokus hatte und ihn wieder verliert, schreibt er commit.flag (die Lua-Skripte erkennen daran
-    // "rausgeklickt" statt Enter) und drueckt fuer den Benutzer Enter - der Text wird also uebernommen.
+    // Die Skins oeffnen es darum mit FocusDismiss=0 und starten dazu diesen Waechter: Klickt man ausserhalb
+    // des Feldes (auch auf ein Rainmeter-Fenster - die holen sich beim Klick keinen Fokus!) oder wechselt
+    // in ein anderes Programm, schreibt er commit.flag (die Lua-Skripte erkennen daran "rausgeklickt"
+    // statt Enter) und drueckt fuer den Benutzer Enter - der Text wird also uebernommen.
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
     [DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string title);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);
+    [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
+    [DllImport("user32.dll")] static extern bool GetCursorPos(out PT p);
+    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RC r);
+    struct PT { public int X, Y; }
+    struct RC { public int L, T, R, B; }
+    static bool MouseDown() { return (GetAsyncKeyState(0x01) & 0x8000) != 0 || (GetAsyncKeyState(0x02) & 0x8000) != 0; }
 
     static IntPtr FindInputBox()
     {
@@ -156,15 +163,36 @@ class TodoHotkey : Form
 
     static int Commit(string dir)
     {
+        bool first;
+        using (new Mutex(true, "ObsidianTodoCommit", out first))
+        {
+            if (!first) return 0;
+            return CommitWatch(dir);
+        }
+    }
+
+    static int CommitWatch(string dir)
+    {
         var sw = Stopwatch.StartNew();
         IntPtr box = IntPtr.Zero;
         while (box == IntPtr.Zero && sw.ElapsedMilliseconds < 5000) { box = FindInputBox(); if (box == IntPtr.Zero) Thread.Sleep(40); }
         if (box == IntPtr.Zero) return 1;
         bool hadFocus = false;
+        bool wasDown = MouseDown();     // Taste noch vom Klick gedrueckt, der das Feld geoeffnet hat: erst loslassen
         while (IsWindow(box) && IsWindowVisible(box))
         {
-            if (GetForegroundWindow() == box) hadFocus = true;
-            else if (hadFocus)
+            bool down = MouseDown();
+            bool clickOutside = false;
+            if (down && !wasDown)
+            {
+                PT p; RC r;
+                GetCursorPos(out p); GetWindowRect(box, out r);
+                clickOutside = p.X < r.L || p.X >= r.R || p.Y < r.T || p.Y >= r.B;
+            }
+            wasDown = down;
+            bool fg = GetForegroundWindow() == box;
+            if (fg) hadFocus = true;
+            if (clickOutside || (hadFocus && !fg))
             {
                 try { File.WriteAllText(Path.Combine(dir, "commit.flag"), "1"); } catch { }
                 IntPtr edit = FindWindowEx(box, IntPtr.Zero, null, null);
@@ -173,7 +201,7 @@ class TodoHotkey : Form
                 PostMessage(target, 0x0101, (IntPtr)0x0D, unchecked((IntPtr)(int)0xC01C0001));   // WM_KEYUP
                 return 0;
             }
-            Thread.Sleep(50);
+            Thread.Sleep(15);
         }
         return 0;
     }
