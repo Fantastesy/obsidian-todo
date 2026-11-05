@@ -212,7 +212,7 @@ Window {
                     }
                     Setting {
                         caption: "Hintergrund"
-                        options: [["Deckend", 250], ["Normal", 218], ["Leicht", 190], ["Durchsichtig", 150]]
+                        options: [["Deckend", 250], ["Normal", 170], ["Leicht", 100], ["Durchsichtig", 1]]
                         current: dlg.cfg.opacity
                         onPicked: v => dlg.cfg.opacity = v
                     }

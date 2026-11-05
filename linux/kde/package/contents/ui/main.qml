@@ -663,5 +663,11 @@ PlasmoidItem {
         })
     }
 
-    Component.onCompleted: loadConfig()
+    Component.onCompleted: {
+        // alte Hintergrund-Stufen (bis 1.2: 218/190/150) auf die neuen umstellen
+        var old = { 218: 170, 190: 100, 150: 1 };
+        if (old[Plasmoid.configuration.opacity] !== undefined)
+            Plasmoid.configuration.opacity = old[Plasmoid.configuration.opacity];
+        loadConfig();
+    }
 }

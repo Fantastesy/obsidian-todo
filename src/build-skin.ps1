@@ -85,7 +85,7 @@ Tags=
 ; 1 = Datei wurde einmal nach der alten Anzeige sortiert (seit 1.3.0 gilt die Reihenfolge in der Datei)
 ManualOrder=0
 Accent=lila
-Opacity=218
+Opacity=170
 ; Symbol-Knoepfe (Zahnrad, Pfeil, Bueroklammer): dunkler und deckender als die Liste
 ColorBtnFill=22,22,30,235
 ColorBtnHover=48,48,62,245
@@ -97,7 +97,8 @@ ListTop=62
 FontFace=Segoe UI
 IconFace=Segoe Fluent Icons
 FontSize=13
-ColorBg=12,12,18,218
+ColorBg=12,12,18,170
+ColorBorder=255,255,255,40
 ColorText=255,255,255,255
 ColorDone=175,175,188,240
 ColorNote=232,232,240,255
@@ -208,7 +209,7 @@ OnUpdateAction=[!CommandMeasure MeasureUpdate "Run"]
 [MeterBg]
 Meter=Shape
 DynamicVariables=1
-Shape=Rectangle 0,0,#Width#,120,12 | Fill Color #ColorBg# | StrokeWidth 0
+Shape=Rectangle 0.5,0.5,(#Width#-1),119,12 | Fill Color #ColorBg# | StrokeWidth 1 | Stroke Color #ColorBorder#
 
 [MeterTitle]
 Meter=String
@@ -1253,7 +1254,7 @@ Mode=sidebar
 Side=right
 Speed=normal
 FontSize=13
-Opacity=218
+Opacity=170
 RevealPerItem=10
 RemindOn=1
 RemindLead=0
@@ -1408,9 +1409,9 @@ $hini += Row 'Font' 'Schriftgröße' $colL '22R' '#FontSize#' @(
     @('Klein', '^12$', "$(P FontSize 12)$(P RowH 32)$(P NoteH 28)$refAll"))
 $hini += Row 'Opacity' 'Hintergrund' $colL '22R' '#Opacity#' @(
     @('Deckend', '^250$', "$(P Opacity 250)$refAll"),
-    @('Normal', '^218$', "$(P Opacity 218)$refAll"),
-    @('Leicht', '^190$', "$(P Opacity 190)$refAll"),
-    @('Durchsichtig', '^150$', "$(P Opacity 150)$refAll"))
+    @('Normal', '^170$', "$(P Opacity 170)$refAll"),
+    @('Leicht', '^100$', "$(P Opacity 100)$refAll"),
+    @('Durchsichtig', '^1$', "$(P Opacity 1)$refAll"))
 # Akzentfarbe: Kaestchen, Knoepfe (ColorCheck) und Links/Ueberschriften (ColorAccent)
 $accents = @(
     @('lila', '138,108,245,255', '165,185,255,255'),

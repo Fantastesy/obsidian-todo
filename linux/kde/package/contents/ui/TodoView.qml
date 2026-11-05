@@ -56,6 +56,9 @@ Rectangle {
 
     color: P.bg(Plasmoid.configuration.opacity)
     radius: Kirigami.Units.gridUnit * 0.75
+    // feine helle Umrandung, damit man den Kasten auch bei wenig/keinem Hintergrund sieht
+    border.width: 1
+    border.color: Plasmoid.configuration.opacity <= 100 ? "#5AFFFFFF" : "#28FFFFFF"
     // dunkle Farbgruppe, damit Eingabefelder und Texte von Plasma hell auf dunkel erscheinen
     Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
     Kirigami.Theme.inherit: false

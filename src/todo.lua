@@ -57,7 +57,18 @@ local deskX, deskY               -- 'both': Desktop-Platz, an den die Liste dana
 local hideOnFirstUpdate = false
 function setupMode()
 	-- Hintergrund-Deckkraft aus den Einstellungen
-	SKIN:Bang('!SetVariable', 'ColorBg', '12,12,18,' .. (tonumber(SKIN:GetVariable('Opacity')) or 218))
+	-- Durchsichtig = 1 statt 0: ganz unsichtbar, aber Klicks auf freie Flaechen kommen noch an.
+	-- Alte Stufen (bis 1.2: 218/190/150) einmalig auf die neuen umstellen.
+	local op = tonumber(SKIN:GetVariable('Opacity')) or 170
+	local old = { [218] = 170, [190] = 100, [150] = 1 }
+	if old[op] then
+		op = old[op]
+		SKIN:Bang('!SetVariable', 'Opacity', op)
+		SKIN:Bang('!WriteKeyValue', 'Variables', 'Opacity', op, '#@#prefs.inc')
+	end
+	SKIN:Bang('!SetVariable', 'ColorBg', '12,12,18,' .. op)
+	-- feine helle Umrandung, damit man den Kasten auch bei wenig/keinem Hintergrund sieht
+	SKIN:Bang('!SetVariable', 'ColorBorder', '255,255,255,' .. (op <= 100 and 90 or 40))
 	mode = SKIN:GetVariable('Mode') or 'sidebar'
 	workH = tonumber(SKIN:GetVariable('WORKAREAHEIGHT')) or 1080
 	if mode == 'sidebar' then
@@ -563,7 +574,7 @@ local function render(openCount, doneCount)
 	SKIN:Bang('!SetOption', 'MeterFold', 'Text', SKIN:GetVariable(isCollapsed and 'FoldClosed' or 'FoldOpen'))
 	if isCollapsed then
 		SKIN:Bang('!HideMeterGroup', 'List')
-		SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0,0,' .. width .. ',' .. (listTop - 4) .. ',12 | Fill Color #ColorBg# | StrokeWidth 0')
+		SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0.5,0.5,' .. (width - 1) .. ',' .. (listTop - 5) .. ',12 | Fill Color #ColorBg# | StrokeWidth 1 | Stroke Color #ColorBorder#')
 		SKIN:Bang('!UpdateMeter', '*')
 		SKIN:Bang('!Redraw')
 		return
@@ -744,7 +755,7 @@ local function render(openCount, doneCount)
 	local bgH = y
 	if mode == 'sidebar' or panel then bgH = math.max(y, workH - 16) end
 	lastBgH = bgH
-	SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0,0,' .. width .. ',' .. bgH .. ',12 | Fill Color #ColorBg# | StrokeWidth 0')
+	SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0.5,0.5,' .. (width - 1) .. ',' .. (bgH - 1) .. ',12 | Fill Color #ColorBg# | StrokeWidth 1 | Stroke Color #ColorBorder#')
 	setCount(openCount)
 	SKIN:Bang('!UpdateMeter', '*')
 	SKIN:Bang('!Redraw')

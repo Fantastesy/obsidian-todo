@@ -7,6 +7,7 @@
 - **Neue Punkte mit Datum kommen von selbst nach oben** (nach Fälligkeit zwischen die anderen Punkte mit Datum). Man kann sie danach trotzdem woandershin ziehen – sie bleiben dann dort. Beim ersten Start wird die Todo.md einmal so geordnet, wie die Liste bisher aussah.
 - **Farbige Tags:** In den Einstellungen eigene Tags anlegen (Klick auf einen Tag = andere Farbe, × = entfernen) und sie im Formular einem Punkt zuweisen. In der Liste erscheinen sie als farbige Etiketten, in der Datei als Obsidian-Tag `#arbeit`.
 - **„Nach Updates suchen“** in den Einstellungen. Gibt es eine neue Version, erscheint „Jetzt aktualisieren“ – sie wird sofort installiert und die Liste lädt neu, ohne Abmelden.
+- **Hintergrund:** „Durchsichtig“ ist jetzt wirklich ganz durchsichtig, „Normal“ und „Leicht“ sind durchsichtiger als vorher. Eine feine Umrandung zeigt immer, wo der Kasten ist. Die bisherige Einstellung wird automatisch übernommen.
 - Kurzhilfe ergänzt (Ziehen).
 
 ### Nur Linux (KDE)

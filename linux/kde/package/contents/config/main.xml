@@ -16,7 +16,7 @@
     <!-- lila | blau | gruen | orange | rot | pink -->
     <entry name="accent" type="String"><default>lila</default></entry>
     <!-- Deckkraft des Hintergrunds 0..255 -->
-    <entry name="opacity" type="Int"><default>218</default></entry>
+    <entry name="opacity" type="Int"><default>170</default></entry>
     <!-- fast | normal | slow: Wartezeit nach Maus-weg -->
     <entry name="speed" type="String"><default>normal</default></entry>
     <!-- Einblenden: Sekunden pro offenem Punkt, 0 = aus -->
