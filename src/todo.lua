@@ -1293,8 +1293,8 @@ function SaveEdit()
 	local e = edit
 	edit = nil
 	local text = convertDates(trim(SKIN:GetVariable('NewItem') or ''))
-	-- leer und rausgeklickt (nicht Enter): nichts loeschen, alles bleibt wie es war
-	if wasCommit() and text == '' then return end
+	-- leeres Feld darf weg (Notiz/Unteraufgabe) - aber ein ganzer Punkt wird beim Rausklicken nie geloescht, nur mit Enter
+	if wasCommit() and text == '' and e.mode == 'task' then return end
 	refresh(true)
 
 	if e.mode == 'task' then

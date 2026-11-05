@@ -240,8 +240,8 @@ ColumnLayout {
         background: Rectangle { radius: Kirigami.Units.gridUnit * 0.4; color: P.field; border.color: P.check(Plasmoid.configuration.accent); border.width: 1 }
         onAccepted: taskRow.finishEdit(true)
         Keys.onEscapePressed: taskRow.finishEdit(false)
-        // Rausklicken: Text uebernehmen wie Enter - aber leer nie loeschen (das geht nur mit Enter)
-        onActiveFocusChanged: if (!activeFocus && taskRow.editKind !== "") taskRow.finishEdit(editor.text.trim() !== "")
+        // Rausklicken: wie Enter - Text wird uebernommen, ein leeres Feld darf weg
+        onActiveFocusChanged: if (!activeFocus && taskRow.editKind !== "") taskRow.finishEdit(true)
     }
 
     FileDialog {

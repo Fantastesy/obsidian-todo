@@ -509,16 +509,15 @@ function InputDone()
 		-- Enter im Titelfeld = sofort speichern (nicht beim Rausklicken)
 		if v ~= '' and not commit and not p then return Click('save') end
 	elseif e.kind == 'time' then
-		if v == '' and commit then -- rausgeklickt, leer: nichts aendern
-		elseif v == '' then f.time = nil
+		if v == '' then f.time = nil
 		else
 			local t = parseTime(v)
 			if t then f.time = t; needDate() else errorText = '„' .. v .. '“ ist keine Uhrzeit – bitte z. B. 15:00 eingeben.' end
 		end
 	elseif e.kind == 'note' then
 		if v == '' then
-			-- leer + Enter loescht die Notiz, leer + Rausklicken laesst sie stehen
-			if f.notes[e.index] and not commit then table.remove(f.notes, e.index) end
+			-- leeres Feld darf weg (auch beim Rausklicken)
+			if f.notes[e.index] then table.remove(f.notes, e.index) end
 		else
 			f.notes[e.index] = v
 		end

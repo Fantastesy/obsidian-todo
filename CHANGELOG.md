@@ -8,7 +8,7 @@
 - **Farbige Tags:** In den Einstellungen eigene Tags anlegen (Klick auf einen Tag = andere Farbe, × = entfernen) und sie im Formular einem Punkt zuweisen. In der Liste erscheinen sie als farbige Etiketten, in der Datei als Obsidian-Tag `#arbeit`.
 - **„Nach Updates suchen“** in den Einstellungen. Gibt es eine neue Version, erscheint „Jetzt aktualisieren“ – sie wird sofort installiert und die Liste lädt neu, ohne Abmelden.
 - **Hintergrund:** „Durchsichtig“ ist jetzt wirklich ganz durchsichtig, „Normal“ und „Leicht“ sind durchsichtiger als vorher. Eine feine Umrandung zeigt immer, wo der Kasten ist. Die bisherige Einstellung wird automatisch übernommen.
-- **Rausklicken löscht nichts mehr:** Wer im Formular den Namen eintippt und dann direkt ins Notizfeld (oder irgendwo anders hin) klickt, behält den Text – vorher war er weg. Gilt auch für Notizen und Unteraufgaben in der Liste und für neue Tags. Ein leeres Feld löscht beim Rausklicken nie etwas, nur mit Enter.
+- **Rausklicken löscht nichts mehr:** Wer im Formular den Namen eintippt und dann direkt ins Notizfeld (oder irgendwo anders hin) klickt, behält den Text – vorher war er weg. Gilt auch für Notizen und Unteraufgaben in der Liste und für neue Tags. Ein leeres Feld verschwindet einfach; ein ganzer Eintrag wird beim Rausklicken aber nie gelöscht.
 - Kurzhilfe ergänzt (Ziehen).
 
 ### Nur Linux (KDE)
