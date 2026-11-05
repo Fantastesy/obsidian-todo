@@ -98,7 +98,6 @@ FontFace=Segoe UI
 IconFace=Segoe Fluent Icons
 FontSize=13
 ColorBg=12,12,18,170
-ColorBorder=255,255,255,40
 ColorText=255,255,255,255
 ColorDone=175,175,188,240
 ColorNote=232,232,240,255
@@ -209,7 +208,10 @@ OnUpdateAction=[!CommandMeasure MeasureUpdate "Run"]
 [MeterBg]
 Meter=Shape
 DynamicVariables=1
-Shape=Rectangle 0.5,0.5,(#Width#-1),119,12 | Fill Color #ColorBg# | StrokeWidth 1 | Stroke Color #ColorBorder#
+Shape=Rectangle 0.5,0.5,(#Width#-1),119,12 | Fill Color #ColorBg# | StrokeWidth 0
+Shape2=Rectangle 0.5,0.5,(#Width#-1),119,12 | Fill LinearGradient Glass | StrokeWidth 1 | Stroke LinearGradient GlassEdge
+Glass=90 | 255,255,255,30 ; 0.0 | 255,255,255,10 ; 0.35 | 255,255,255,3 ; 1.0
+GlassEdge=90 | 255,255,255,95 ; 0.0 | 255,255,255,30 ; 0.5 | 255,255,255,30 ; 1.0
 
 [MeterTitle]
 Meter=String
