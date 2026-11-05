@@ -56,26 +56,9 @@ Rectangle {
 
     color: P.bg(Plasmoid.configuration.opacity)
     radius: Kirigami.Units.gridUnit * 0.75
-    // Glas wie unter Windows: heller Schimmer oben, der nach unten auslaeuft, Kante oben heller
-    // (erstes Kind = liegt unter allem anderen)
-    Rectangle {
-        id: glass
-        anchors.fill: parent
-        radius: parent.radius
-        readonly property bool thin: Plasmoid.configuration.opacity <= 100
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: "#1EFFFFFF" }
-            GradientStop { position: 0.35; color: "#0AFFFFFF" }
-            GradientStop { position: 1.0; color: "#03FFFFFF" }
-        }
-        border.width: 1
-        border.color: glass.thin ? "#40FFFFFF" : "#22FFFFFF"
-        // obere Kante heller
-        Rectangle {
-            x: parent.radius; width: parent.width - 2 * parent.radius; y: 0; height: 1
-            color: glass.thin ? "#96FFFFFF" : "#5FFFFFFF"
-        }
-    }
+    // feine helle Umrandung, damit man den Kasten auch bei wenig/keinem Hintergrund sieht
+    border.width: 1
+    border.color: Plasmoid.configuration.opacity <= 100 ? "#5AFFFFFF" : "#28FFFFFF"
     // dunkle Farbgruppe, damit Eingabefelder und Texte von Plasma hell auf dunkel erscheinen
     Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
     Kirigami.Theme.inherit: false

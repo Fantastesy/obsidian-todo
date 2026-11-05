@@ -67,11 +67,8 @@ function setupMode()
 		SKIN:Bang('!WriteKeyValue', 'Variables', 'Opacity', op, '#@#prefs.inc')
 	end
 	SKIN:Bang('!SetVariable', 'ColorBg', '12,12,18,' .. op)
-	-- Glas: heller Schimmer oben, der nach unten auslaeuft, Kante oben heller als unten
-	-- (bei wenig Hintergrund kraeftiger, damit man den Kasten immer sieht)
-	local edge = op <= 100 and { 150, 55 } or { 95, 30 }
-	SKIN:Bang('!SetOption', 'MeterBg', 'Glass', '90 | 255,255,255,30 ; 0.0 | 255,255,255,10 ; 0.35 | 255,255,255,3 ; 1.0')
-	SKIN:Bang('!SetOption', 'MeterBg', 'GlassEdge', '90 | 255,255,255,' .. edge[1] .. ' ; 0.0 | 255,255,255,' .. edge[2] .. ' ; 0.5 | 255,255,255,' .. edge[2] .. ' ; 1.0')
+	-- feine helle Umrandung, damit man den Kasten auch bei wenig/keinem Hintergrund sieht
+	SKIN:Bang('!SetVariable', 'ColorBorder', '255,255,255,' .. (op <= 100 and 90 or 40))
 	mode = SKIN:GetVariable('Mode') or 'sidebar'
 	workH = tonumber(SKIN:GetVariable('WORKAREAHEIGHT')) or 1080
 	if mode == 'sidebar' then
@@ -171,13 +168,6 @@ local TAGCOL = {
 	rot = { '220,70,70', '255,160,160' }, pink = { '220,80,165', '255,165,215' },
 	grau = { '140,140,154', '210,210,220' },
 }
--- Hintergrund der Liste als Glas: dunkle Flaeche (Deckkraft aus den Einstellungen),
--- darueber Schimmer und Kante (Verlaeufe Glass/GlassEdge, gesetzt in setupMode)
-local function glassBg(w, h)
-	local r = string.format('Rectangle 0.5,0.5,%d,%d,12', w - 1, h - 1)
-	SKIN:Bang('!SetOption', 'MeterBg', 'Shape', r .. ' | Fill Color #ColorBg# | StrokeWidth 0')
-	SKIN:Bang('!SetOption', 'MeterBg', 'Shape2', r .. ' | Fill LinearGradient Glass | StrokeWidth 1 | Stroke LinearGradient GlassEdge')
-end
 -- abgerundete Flaeche (Pille) hinter Etikett Tag{i}_{k}, an dessen endgueltiger Position
 local tagFillOf = {}
 local function tagPill(i, k)
@@ -584,7 +574,7 @@ local function render(openCount, doneCount)
 	SKIN:Bang('!SetOption', 'MeterFold', 'Text', SKIN:GetVariable(isCollapsed and 'FoldClosed' or 'FoldOpen'))
 	if isCollapsed then
 		SKIN:Bang('!HideMeterGroup', 'List')
-		glassBg(width, listTop - 4)
+		SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0.5,0.5,' .. (width - 1) .. ',' .. (listTop - 5) .. ',12 | Fill Color #ColorBg# | StrokeWidth 1 | Stroke Color #ColorBorder#')
 		SKIN:Bang('!UpdateMeter', '*')
 		SKIN:Bang('!Redraw')
 		return
@@ -765,7 +755,7 @@ local function render(openCount, doneCount)
 	local bgH = y
 	if mode == 'sidebar' or panel then bgH = math.max(y, workH - 16) end
 	lastBgH = bgH
-	glassBg(width, bgH)
+	SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0.5,0.5,' .. (width - 1) .. ',' .. (bgH - 1) .. ',12 | Fill Color #ColorBg# | StrokeWidth 1 | Stroke Color #ColorBorder#')
 	setCount(openCount)
 	SKIN:Bang('!UpdateMeter', '*')
 	SKIN:Bang('!Redraw')
