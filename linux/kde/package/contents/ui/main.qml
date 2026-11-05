@@ -339,8 +339,16 @@ PlasmoidItem {
         name = Core.cleanTag(name);
         if (!name || !/\D/.test(name)) return false;
         var list = tagList.slice();
+        if (list.length >= 8) return false;          // wie Windows: hoechstens 8 Tags
         for (var i = 0; i < list.length; i++) if (list[i].name.toLowerCase() === name.toLowerCase()) return false;
-        list.push({ name: name, color: color || P.TAG_COLORS[list.length % 6] });
+        // wie Windows: erste noch nicht benutzte Farbe
+        if (!color) {
+            var used = {};
+            for (var j = 0; j < list.length; j++) used[list[j].color] = true;
+            color = P.TAG_COLORS[list.length % 6];
+            for (var k = 0; k < P.TAG_COLORS.length; k++) if (!used[P.TAG_COLORS[k]]) { color = P.TAG_COLORS[k]; break; }
+        }
+        list.push({ name: name, color: color });
         saveTags(list);
         return true;
     }
@@ -638,6 +646,8 @@ PlasmoidItem {
                 // move=2,0: Zeile 2 an die Stelle von Zeile 0 ziehen (wie mit der Maus)
                 else if (c.indexOf("move=") === 0) { var mv = c.substring(5).split(","); var dv2 = root.fullRepresentationItem.children[0]; dv2.dragStart(+mv[0]); dv2.dragTo = +mv[1]; dv2.dragEnd(); }
                 else if (c.indexOf("tags=") === 0) Plasmoid.configuration.tags = c.substring(5);
+                else if (c.indexOf("opacity=") === 0) Plasmoid.configuration.opacity = +c.substring(8);
+                else if (c.indexOf("tagedit=") === 0) settings.testTagEdit(c.substring(8));
                 else if (c.indexOf("formtags=") === 0) { form.tags = c.substring(9).split(","); }
                 else if (c === "updcheck") root.checkForUpdates();
                 else if (c === "updnow") root.installUpdate();

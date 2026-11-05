@@ -11,6 +11,8 @@ import "../code/palette.js" as P
 
 // normales randloses Fenster (kein Plasma-Dialog): nur so laesst KDE es an der Titelzeile verschieben
 Window {
+    // Test (main.qml "tagedit=Name"): "+ Neuer Tag" oeffnen und Text eintragen, "tagedit=" schliesst
+    function testTagEdit(t) { if (t === "") { tagAdd.editing = false; return; } if (t === "!") { tagField.accepted(); return; } tagField.text = t; tagAdd.editing = true; tagField.forceActiveFocus(); }
     id: dlg
     property var app
     readonly property var cfg: Plasmoid.configuration
@@ -229,13 +231,13 @@ Window {
                         Layout.fillWidth: true
                         Layout.topMargin: Kirigami.Units.smallSpacing
                         spacing: Kirigami.Units.smallSpacing * 1.5
-                        visible: dlg.app.tagList.length > 0
                         Repeater {
                             model: dlg.app.tagList
                             delegate: Row {
                                 spacing: 2
                                 Chip {
-                                    text: "● " + modelData.name
+                                    text: modelData.name
+                                    bold: true
                                     textColor: P.tagText(modelData.color)
                                     fill: hovered ? P.chipHover : P.tagFill(modelData.color)
                                     border.color: P.tagDot(modelData.color)
@@ -248,24 +250,39 @@ Window {
                                 }
                             }
                         }
-                    }
-                    RowLayout {
-                        Layout.topMargin: Kirigami.Units.smallSpacing
-                        Layout.fillWidth: true
-                        spacing: Kirigami.Units.smallSpacing * 1.5
-                        PC3.TextField {
-                            id: tagField
-                            Layout.fillWidth: true
-                            placeholderText: "Neuer Tag, z. B. Arbeit"
-                            leftPadding: Kirigami.Units.largeSpacing
-                            topPadding: Kirigami.Units.smallSpacing * 2
-                            bottomPadding: Kirigami.Units.smallSpacing * 2
-                            color: P.text
-                            placeholderTextColor: P.done
-                            background: Rectangle { radius: Kirigami.Units.gridUnit * 0.4; color: P.field; border.width: 1; border.color: tagField.activeFocus ? P.check(dlg.cfg.accent) : P.fieldBorder }
-                            onAccepted: if (dlg.app.addTag(text)) text = ""
+                        // "+ Neuer Tag" wird beim Klick selbst zum Eingabefeld (wie unter Windows):
+                        // Enter = anlegen, Esc oder Wegklicken = abbrechen
+                        Item {
+                            id: tagAdd
+                            property bool editing: false
+                            visible: dlg.app.tagList.length < 8
+                            width: Math.max(addChip.implicitWidth, Kirigami.Units.gridUnit * 9)
+                            height: addChip.implicitHeight
+                            Chip {
+                                id: addChip
+                                anchors.fill: parent
+                                visible: !tagAdd.editing
+                                text: "+ Neuer Tag"
+                                bold: true
+                                textColor: P.accent(dlg.cfg.accent)
+                                onClicked: { tagField.text = ""; tagAdd.editing = true; tagField.forceActiveFocus(); }
+                            }
+                            PC3.TextField {
+                                id: tagField
+                                anchors.fill: parent
+                                visible: tagAdd.editing
+                                leftPadding: Kirigami.Units.largeSpacing
+                                rightPadding: Kirigami.Units.largeSpacing
+                                topPadding: 0
+                                bottomPadding: 0
+                                verticalAlignment: TextInput.AlignVCenter
+                                color: P.text
+                                background: Rectangle { radius: Kirigami.Units.gridUnit * 0.45; color: "#FF1E2027"; border.width: 1; border.color: P.check(dlg.cfg.accent) }
+                                onAccepted: { dlg.app.addTag(text); tagAdd.editing = false; }
+                                Keys.onEscapePressed: tagAdd.editing = false
+                                onActiveFocusChanged: if (!activeFocus) tagAdd.editing = false
+                            }
                         }
-                        Chip { text: "Hinzufügen"; onClicked: { if (dlg.app.addTag(tagField.text)) tagField.text = ""; } }
                     }
                     Small { text: "Klick auf einen Tag wechselt seine Farbe. Zuweisen im Formular (neuer Eintrag / Rechtsklick). In der Datei steht er als #tag." }
                 }
