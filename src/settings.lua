@@ -17,6 +17,22 @@ local tags = {}
 local drawn = false
 local addBox          -- Flaeche von "+ Neuer Tag": { x, y, w, shape }
 
+-- Rausklicken soll nichts loeschen: Eingabefelder haben FocusDismiss=0, dazu laeuft
+-- "TodoHotkey.exe --commit" (hotkey.cs). Verliert das Feld den Fokus, legt der Waechter commit.flag an
+-- und drueckt Enter - der Text wird uebernommen. commitWatch() beim Oeffnen, wasCommit() beim Uebernehmen.
+local function commitWatch()
+	local dir = SKIN:GetVariable('@')
+	os.remove(dir .. 'commit.flag')
+	SKIN:Bang('["' .. dir .. 'TodoHotkey.exe" --commit]')
+end
+local function wasCommit()
+	local p = SKIN:GetVariable('@') .. 'commit.flag'
+	local fh = io.open(p, 'rb')
+	if not fh then return false end
+	fh:close(); os.remove(p)
+	return true
+end
+
 local function trim(s) return (s:gsub('^%s+', ''):gsub('%s+$', '')) end
 
 local function load()
@@ -139,12 +155,14 @@ function AddStart()
 	-- verdeckt damit das Eingabefeld; einfaches "Topmost" (1) tut das nicht
 	SKIN:Bang('!ZPos', '1')
 	SKIN:Bang('!CommandMeasure', 'MeasureTagInput', 'ExecuteBatch 1')
+	commitWatch()
 end
 
 -- Esc / weggeklickt: Knopf wieder normal
 function AddCancel() render() end
 
 function AddDone()
+	wasCommit()
 	render()
 	local name = trim(SKIN:GetVariable('NewTag') or ''):gsub('^#+', ''):gsub('%s+', '-'):gsub('[#,:;%.!%?%(%)%[%]{}"\'<>]', '')
 	if name == '' or not name:match('%D') or #tags >= MAX then return end

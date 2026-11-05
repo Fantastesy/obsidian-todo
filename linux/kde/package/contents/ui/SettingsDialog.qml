@@ -280,7 +280,8 @@ Window {
                                 background: Rectangle { radius: Kirigami.Units.gridUnit * 0.45; color: "#FF1E2027"; border.width: 1; border.color: P.check(dlg.cfg.accent) }
                                 onAccepted: { dlg.app.addTag(text); tagAdd.editing = false; }
                                 Keys.onEscapePressed: tagAdd.editing = false
-                                onActiveFocusChanged: if (!activeFocus) tagAdd.editing = false
+                                // Rausklicken: Tag trotzdem anlegen (leer = nichts)
+                                onActiveFocusChanged: if (!activeFocus && tagAdd.editing) { if (text.trim() !== "") dlg.app.addTag(text); tagAdd.editing = false; }
                             }
                         }
                     }

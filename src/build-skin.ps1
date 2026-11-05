@@ -167,7 +167,8 @@ SolidColor=32,32,42,255
 FontColor=#ColorText#
 FontFace=#FontFace#
 FontSize=#FontSize#
-FocusDismiss=1
+; bleibt beim Rausklicken offen, TodoHotkey.exe --commit uebernimmt dann den Text (todo.lua openEditor)
+FocusDismiss=0
 DefaultValue=#EditText#
 Command1=[!SetVariable NewItem """`$UserInput`$"""][!CommandMeasure MeasureTodo "SaveEdit()"]
 
@@ -632,7 +633,9 @@ FontColor=#ColorText#
 FontFace=#FontFace#
 FontSize=#InSize#
 StringStyle=#InStyle#
-FocusDismiss=1
+; bleibt beim Rausklicken offen, TodoHotkey.exe --commit uebernimmt dann den Text (form.lua openInput)
+FocusDismiss=0
+OnDismissAction=[!CommandMeasure MeasureForm "InputCancel()"]
 DefaultValue=#InText#
 Command1=[!SetVariable Input """`$UserInput`$"""][!CommandMeasure MeasureForm "InputDone()"]
 

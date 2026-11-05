@@ -9,6 +9,8 @@ local calView = 'days'        -- 'days' | 'months'
 local clockOpen, clockMode, ch, cm = false, 'h', 12, 0
 local custOpen, cn, cu, cdays = false, 1, 1, {}
 local input                   -- laufende Eingabe: { kind = 'title' | 'time' | 'note', index }
+local pending                 -- Klick, waehrend noch ein Eingabefeld offen war: erst Text uebernehmen, dann ausfuehren
+
 local confirmDelete, errorText = false, nil
 local shapeCount = 0
 local c = {}
@@ -419,9 +421,31 @@ local function render()
 	SKIN:Bang('!Redraw')
 end
 
+-- Rausklicken soll nichts loeschen: Eingabefelder haben FocusDismiss=0, dazu laeuft
+-- "TodoHotkey.exe --commit" (hotkey.cs). Verliert das Feld den Fokus, legt der Waechter commit.flag an
+-- und drueckt Enter - der Text wird uebernommen. commitWatch() beim Oeffnen, wasCommit() beim Uebernehmen.
+local function commitWatch()
+	local dir = SKIN:GetVariable('@')
+	os.remove(dir .. 'commit.flag')
+	SKIN:Bang('["' .. dir .. 'TodoHotkey.exe" --commit]')
+end
+local function wasCommit()
+	local p = SKIN:GetVariable('@') .. 'commit.flag'
+	local fh = io.open(p, 'rb')
+	if not fh then return false end
+	fh:close(); os.remove(p)
+	return true
+end
+
 local drawn = false
 local openInput
 function Update()
+	-- Notbremse: kam vom Waechter nichts zurueck, den gemerkten Klick trotzdem ausfuehren
+	if pending and os.time() - pending.at >= 3 then
+		local p = pending
+		pending, input = nil, nil
+		Click(p.what, p.arg)
+	end
 	if not drawn then
 		drawn = true
 		render()
@@ -449,6 +473,7 @@ function openInput(kind, text, meter, index)
 	SKIN:Bang('!SetVariable', 'InW', width - 40 - padL - 12)
 	SKIN:Bang('!UpdateMeasure', 'MeasureInput')
 	SKIN:Bang('!CommandMeasure', 'MeasureInput', 'ExecuteBatch 1')
+	commitWatch()
 end
 
 local function parseTime(s)
@@ -460,29 +485,45 @@ end
 -- Uhrzeit oder Wiederholung ohne Datum -> ab heute
 local function needDate() if not f.date then f.date = today() end end
 
+-- Eingabe abgebrochen (Esc): gemerkten Klick trotzdem ausfuehren
+function InputCancel()
+	if not input then return end
+	input = nil
+	local p = pending
+	pending = nil
+	if p then return Click(p.what, p.arg) end
+	render()
+end
+
 function InputDone()
 	local e = input
 	input = nil
+	local commit = wasCommit()      -- rausgeklickt statt Enter
+	local p = pending
+	pending = nil
 	if not e then return end
 	local v = trim(SKIN:GetVariable('Input') or '')
 	errorText = nil
 	if e.kind == 'title' then
-		f.title = v
-		-- Enter im Titelfeld = sofort speichern
-		if v ~= '' then return Click('save') end
+		if v ~= '' or not commit then f.title = v end
+		-- Enter im Titelfeld = sofort speichern (nicht beim Rausklicken)
+		if v ~= '' and not commit and not p then return Click('save') end
 	elseif e.kind == 'time' then
-		if v == '' then f.time = nil
+		if v == '' and commit then -- rausgeklickt, leer: nichts aendern
+		elseif v == '' then f.time = nil
 		else
 			local t = parseTime(v)
 			if t then f.time = t; needDate() else errorText = '„' .. v .. '“ ist keine Uhrzeit – bitte z. B. 15:00 eingeben.' end
 		end
 	elseif e.kind == 'note' then
 		if v == '' then
-			if f.notes[e.index] then table.remove(f.notes, e.index) end
+			-- leer + Enter loescht die Notiz, leer + Rausklicken laesst sie stehen
+			if f.notes[e.index] and not commit then table.remove(f.notes, e.index) end
 		else
 			f.notes[e.index] = v
 		end
 	end
+	if p then return Click(p.what, p.arg) end
 	render()
 end
 
@@ -514,6 +555,11 @@ local function finish(action)
 end
 
 function Click(what, arg)
+	-- Eingabefeld noch offen: erst den Text uebernehmen lassen (Waechter drueckt Enter), dann diesen Klick
+	if input then
+		pending = { what = what, arg = arg, at = os.time() }
+		return
+	end
 	errorText = nil
 	if what ~= 'delete' then confirmDelete = false end
 	if what == 'title' then return openInput('title', f.title, 'FieldTitle')

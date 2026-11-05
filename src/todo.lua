@@ -792,6 +792,22 @@ local function findChild(t, lineNo, orig)
 	end
 end
 
+-- Rausklicken soll nichts loeschen: Eingabefelder haben FocusDismiss=0, dazu laeuft
+-- "TodoHotkey.exe --commit" (hotkey.cs). Verliert das Feld den Fokus, legt der Waechter commit.flag an
+-- und drueckt Enter - der Text wird uebernommen. commitWatch() beim Oeffnen, wasCommit() beim Uebernehmen.
+local function commitWatch()
+	local dir = SKIN:GetVariable('@')
+	os.remove(dir .. 'commit.flag')
+	SKIN:Bang('["' .. dir .. 'TodoHotkey.exe" --commit]')
+end
+local function wasCommit()
+	local p = SKIN:GetVariable('@') .. 'commit.flag'
+	local fh = io.open(p, 'rb')
+	if not fh then return false end
+	fh:close(); os.remove(p)
+	return true
+end
+
 -- Textfeld an Position x/y oeffnen
 local function openEditor(text, x, y, w)
 	SKIN:Bang('!SetVariable', 'EditText', text)
@@ -800,6 +816,7 @@ local function openEditor(text, x, y, w)
 	SKIN:Bang('!SetVariable', 'EditW', w)
 	SKIN:Bang('!UpdateMeasure', 'MeasureEdit')
 	SKIN:Bang('!CommandMeasure', 'MeasureEdit', 'ExecuteBatch 1')
+	commitWatch()
 end
 
 -- abhaken setzt "✅ heute", zuruecknehmen entfernt es wieder
@@ -1276,6 +1293,8 @@ function SaveEdit()
 	local e = edit
 	edit = nil
 	local text = convertDates(trim(SKIN:GetVariable('NewItem') or ''))
+	-- leer und rausgeklickt (nicht Enter): nichts loeschen, alles bleibt wie es war
+	if wasCommit() and text == '' then return end
 	refresh(true)
 
 	if e.mode == 'task' then

@@ -131,10 +131,58 @@ class TodoHotkey : Form
         return found ? 0 : 1;
     }
 
+    // ---------- Eingabefeld nicht verlieren: TodoHotkey.exe --commit ----------
+    // Rainmeters Eingabefeld (InputText, Fenster "InputBox") verwirft den Text, wenn man woanders hinklickt.
+    // Die Skins oeffnen es darum mit FocusDismiss=0 und starten dazu diesen Waechter: Sobald das Feld den
+    // Fokus hatte und ihn wieder verliert, schreibt er commit.flag (die Lua-Skripte erkennen daran
+    // "rausgeklickt" statt Enter) und drueckt fuer den Benutzer Enter - der Text wird also uebernommen.
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
+    [DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string title);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);
+
+    static IntPtr FindInputBox()
+    {
+        IntPtr box = IntPtr.Zero;
+        EnumWindows(delegate (IntPtr h, IntPtr p) {
+            var t = new System.Text.StringBuilder(64); GetWindowText(h, t, 64);
+            var c = new System.Text.StringBuilder(128); GetClassName(h, c, 128);
+            if (t.ToString() == "InputBox" && c.ToString().StartsWith("WindowsForms") && IsWindowVisible(h)) { box = h; return false; }
+            return true;
+        }, IntPtr.Zero);
+        return box;
+    }
+
+    static int Commit(string dir)
+    {
+        var sw = Stopwatch.StartNew();
+        IntPtr box = IntPtr.Zero;
+        while (box == IntPtr.Zero && sw.ElapsedMilliseconds < 5000) { box = FindInputBox(); if (box == IntPtr.Zero) Thread.Sleep(40); }
+        if (box == IntPtr.Zero) return 1;
+        bool hadFocus = false;
+        while (IsWindow(box) && IsWindowVisible(box))
+        {
+            if (GetForegroundWindow() == box) hadFocus = true;
+            else if (hadFocus)
+            {
+                try { File.WriteAllText(Path.Combine(dir, "commit.flag"), "1"); } catch { }
+                IntPtr edit = FindWindowEx(box, IntPtr.Zero, null, null);
+                IntPtr target = edit != IntPtr.Zero ? edit : box;
+                PostMessage(target, 0x0100, (IntPtr)0x0D, (IntPtr)0x001C0001);   // WM_KEYDOWN Enter
+                PostMessage(target, 0x0101, (IntPtr)0x0D, unchecked((IntPtr)(int)0xC01C0001));   // WM_KEYUP
+                return 0;
+            }
+            Thread.Sleep(50);
+        }
+        return 0;
+    }
+
     [STAThread]
     static int Main(string[] args)
     {
         if (args.Length >= 2 && args[0] == "--check") return CheckWindow(args[1]);
+        if (args.Length >= 1 && args[0] == "--commit") return Commit(Path.GetDirectoryName(Application.ExecutablePath));
         if (args.Length >= 1 && args[0] == "--record") return Recorder.Record(Path.GetDirectoryName(Application.ExecutablePath), ReadWish(Path.GetDirectoryName(Application.ExecutablePath)));
         Run(args);
         return 0;
