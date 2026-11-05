@@ -15,6 +15,7 @@ local MAX = 8
 local LEFT, RIGHT = 22, 22 + 438       -- linke Spalte
 local tags = {}
 local drawn = false
+local addBox          -- Flaeche von "+ Neuer Tag": { x, y, w, shape }
 
 local function trim(s) return (s:gsub('^%s+', ''):gsub('%s+$', '')) end
 
@@ -69,10 +70,13 @@ local function render()
 		end
 	end
 	show('TagAdd', #tags < MAX)
+	set('TagAdd', 'Text', '+ Neuer Tag')
+	addBox = nil
 	if #tags < MAX then
 		SKIN:Bang('!UpdateMeter', 'TagAdd')
 		local w = SKIN:GetMeter('TagAdd'):GetW()
 		local px = place('TagAdd', w)
+		addBox = { x = px, y = y, w = w, shape = #shapes + 1 }
 		shapes[#shapes + 1] = string.format('Rectangle %d.5,%d.5,%d,33,8 | Fill Color 255,255,255,14 | StrokeWidth 1 | Stroke Color 255,255,255,38', px, y, w - 1)
 	end
 	y = y + 42
@@ -116,10 +120,20 @@ function Remove(k)
 end
 
 -- "+ Neuer Tag": Eingabefeld ueber dem Knopf
+-- Der Knopf wird selbst zum Eingabefeld: gleiche, deckende Farbe wie das Textfeld,
+-- Rahmen in Akzentfarbe, das Textfeld sitzt innen (nicht ueber den runden Ecken).
 function AddStart()
-	local m = SKIN:GetMeter('TagAdd')
-	SKIN:Bang('!SetVariable', 'TagInX', m:GetX() + 4)
-	SKIN:Bang('!SetVariable', 'TagInY', m:GetY() + 5)
+	if not addBox then return end
+	local b = addBox
+	set('TagAdd', 'Text', '')
+	set('TagShapes', b.shape == 1 and 'Shape' or ('Shape' .. b.shape), string.format(
+		'Rectangle %d.5,%d.5,%d,33,8 | Fill Color 30,32,39,255 | StrokeWidth 1 | Stroke Color %s',
+		b.x, b.y, b.w - 1, SKIN:GetVariable('ColorCheck')))
+	SKIN:Bang('!UpdateMeter', '*')
+	SKIN:Bang('!Redraw')
+	SKIN:Bang('!SetVariable', 'TagInX', b.x + 12)
+	SKIN:Bang('!SetVariable', 'TagInY', b.y + 6)
+	SKIN:Bang('!SetVariable', 'TagInW', b.w - 22)
 	SKIN:Bang('!UpdateMeasure', 'MeasureTagInput')
 	-- "Stay topmost" (ZPos 2) schiebt das Fenster laufend wieder nach vorn und
 	-- verdeckt damit das Eingabefeld; einfaches "Topmost" (1) tut das nicht
@@ -127,7 +141,11 @@ function AddStart()
 	SKIN:Bang('!CommandMeasure', 'MeasureTagInput', 'ExecuteBatch 1')
 end
 
+-- Esc / weggeklickt: Knopf wieder normal
+function AddCancel() render() end
+
 function AddDone()
+	render()
 	local name = trim(SKIN:GetVariable('NewTag') or ''):gsub('^#+', ''):gsub('%s+', '-'):gsub('[#,:;%.!%?%(%)%[%]{}"\'<>]', '')
 	if name == '' or not name:match('%D') or #tags >= MAX then return end
 	for _, t in ipairs(tags) do if t.name:lower() == name:lower() then return end end

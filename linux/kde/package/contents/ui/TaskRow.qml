@@ -113,11 +113,11 @@ ColumnLayout {
                 Repeater {
                     model: taskRow.row.tags
                     delegate: Rectangle {
-                        radius: Kirigami.Units.gridUnit * 0.3
+                        radius: height / 2   // Pille, ganz rund
                         color: P.tagFill(modelData.color)
                         border.width: 1
                         border.color: P.tagFill(modelData.color)
-                        implicitWidth: tagLabel.implicitWidth + Kirigami.Units.smallSpacing * 3
+                        implicitWidth: tagLabel.implicitWidth + Kirigami.Units.smallSpacing * 4
                         implicitHeight: tagLabel.implicitHeight + 4
                         PC3.Label {
                             id: tagLabel

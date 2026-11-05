@@ -157,6 +157,22 @@ local TAGCOL = {
 	rot = { '220,70,70', '255,160,160' }, pink = { '220,80,165', '255,165,215' },
 	grau = { '140,140,154', '210,210,220' },
 }
+-- abgerundete Flaeche (Pille) hinter Etikett Tag{i}_{k}, an dessen endgueltiger Position
+local tagFillOf = {}
+local function tagPill(i, k)
+	local tm, bg = 'Tag' .. i .. '_' .. k, 'TagBg' .. i .. '_' .. k
+	SKIN:Bang('!UpdateMeter', tm)
+	local m = SKIN:GetMeter(tm)
+	local w, h = m:GetW(), m:GetH()
+	if w <= 0 then SKIN:Bang('!HideMeter', bg) return end
+	local c = tagFillOf[tm] or '140,140,154'
+	SKIN:Bang('!SetOption', bg, 'X', m:GetX())
+	SKIN:Bang('!SetOption', bg, 'Y', m:GetY())
+	SKIN:Bang('!SetOption', bg, 'Shape', string.format('Rectangle 0.5,0.5,%d,%d,%d | Fill Color %s,70 | StrokeWidth 1 | Stroke Color %s,150',
+		w - 1, h - 1, math.floor((h - 1) / 2), c, c))
+	SKIN:Bang('!ShowMeter', bg)
+	SKIN:Bang('!UpdateMeter', bg)
+end
 -- Einstellung "Tags=arbeit:blau,privat:pink" -> { arbeit = 'blau', ... } (Namen klein)
 local function tagColors()
 	local out = {}
@@ -587,7 +603,8 @@ local function render(openCount, doneCount)
 				if name then
 					local col = TAGCOL[tagConf[name:lower()] or 'grau'] or TAGCOL.grau
 					SKIN:Bang('!SetOption', tm, 'Text', name)
-					SKIN:Bang('!SetOption', tm, 'SolidColor', col[1] .. ',90')
+					SKIN:Bang('!SetOption', tm, 'SolidColor', '0,0,0,0')
+					tagFillOf[tm] = col[1]
 					SKIN:Bang('!SetOption', tm, 'FontColor', col[2] .. ',255')
 					-- erst einblenden: versteckte Meter melden die Breite 0
 					SKIN:Bang('!ShowMeter', tm)
@@ -595,6 +612,7 @@ local function render(openCount, doneCount)
 					tw = tw + SKIN:GetMeter(tm):GetW() + 5
 				else
 					SKIN:Bang('!HideMeter', tm)
+					SKIN:Bang('!HideMeter', 'TagBg' .. i .. '_' .. k)
 				end
 			end
 
@@ -641,6 +659,7 @@ local function render(openCount, doneCount)
 				for k = 1, math.min(#tags, MAXTAGS) do SKIN:Bang('!SetOption', 'Tag' .. i .. '_' .. k, 'Y', y - 4) end
 				y = y + 24
 			end
+			for k = 1, math.min(#tags, MAXTAGS) do tagPill(i, k) end
 
 			for _, sub in ipairs(t.subs) do
 				if s >= maxSubs then break end
@@ -685,7 +704,8 @@ local function render(openCount, doneCount)
 			hideCheck(m)
 			itemY[i], itemBot[i] = nil, nil
 			for _, p in ipairs({ 'Clip' .. i, 'Clip' .. i .. 'Btn', 'Progress' .. i, 'NoteAdd' .. i, 'SubAdd' .. i, 'FileAdd' .. i,
-				'Tag' .. i .. '_1', 'Tag' .. i .. '_2', 'Tag' .. i .. '_3' }) do
+				'Tag' .. i .. '_1', 'Tag' .. i .. '_2', 'Tag' .. i .. '_3',
+				'TagBg' .. i .. '_1', 'TagBg' .. i .. '_2', 'TagBg' .. i .. '_3' }) do
 				SKIN:Bang('!HideMeter', p)
 			end
 		end

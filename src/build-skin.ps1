@@ -336,7 +336,9 @@ for ($i = 1; $i -le 15; $i++) {
         "[Item$i]`nMeter=String", "[Item$i]`nMeter=String`nLeftMouseDownAction=[!CommandMeasure MeasureTodo `"DragStart($i)`"]")
     # Tags als farbige Etiketten hinter dem Text (Text, Farben und Position setzt todo.lua)
     for ($k = 1; $k -le 3; $k++) {
-        $ini += "[Tag${i}_$k]`r`nMeter=String`r`nDynamicVariables=1`r`nHidden=1`r`nX=0`r`nY=0`r`nPadding=8,3,8,4`r`nFontFace=#FontFace#`r`nFontSize=(#FontSize#-3)`r`nFontWeight=600`r`nFontColor=255,255,255,255`r`nSolidColor=0,0,0,0`r`nAntiAlias=1`r`nText=`r`n`r`n"
+        # abgerundete Flaeche hinter dem Etikett (Pillenform, Groesse setzt todo.lua)
+        $ini += "[TagBg${i}_$k]`r`nMeter=Shape`r`nHidden=1`r`nX=0`r`nY=0`r`nShape=Rectangle 0,0,1,1 | StrokeWidth 0`r`n`r`n"
+        $ini += "[Tag${i}_$k]`r`nMeter=String`r`nDynamicVariables=1`r`nHidden=1`r`nX=0`r`nY=0`r`nPadding=10,3,10,4`r`nFontFace=#FontFace#`r`nFontSize=(#FontSize#-3)`r`nFontWeight=600`r`nFontColor=255,255,255,255`r`nSolidColor=0,0,0,0`r`nAntiAlias=1`r`nText=`r`n`r`n"
     }
 }
 for ($i = 1; $i -le 30; $i++) {
@@ -1262,6 +1264,7 @@ Tags=
 NewTag=
 TagInX=0
 TagInY=0
+TagInW=150
 @IncludePrefs=#@#prefs.inc
 @IncludeHotkey=#@#hotkey.inc
 FontFace=Segoe UI
@@ -1306,12 +1309,13 @@ Plugin=InputText
 DynamicVariables=1
 X=#TagInX#
 Y=#TagInY#
-W=200
-H=24
+W=#TagInW#
+H=22
 SolidColor=30,32,39,255
 FontColor=#ColorText#
 FontFace=#FontFace#
 FontSize=11
+OnDismissAction=[!CommandMeasure MeasureSettings "AddCancel()"]
 ; bleibt offen, bis Enter (speichern) oder Esc (abbrechen) - sonst schliesst es sich, sobald es kurz den Fokus verliert
 FocusDismiss=0
 DefaultValue=
