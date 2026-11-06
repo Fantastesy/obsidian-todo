@@ -163,12 +163,76 @@ class TodoHotkey : Form
 
     static int Commit(string dir)
     {
-        bool first;
-        using (new Mutex(true, "ObsidianTodoCommit", out first))
+        // Ein Feld nach dem anderen: Wurde gerade eins uebernommen und gleich das naechste geoeffnet
+        // (z. B. Name -> "+ Notiz"), laeuft der alte Waechter evtl. noch kurz. Darauf warten statt aufzugeben.
+        using (var m = new Mutex(false, "ObsidianTodoCommit"))
         {
-            if (!first) return 0;
-            return CommitWatch(dir);
+            bool got;
+            try { got = m.WaitOne(3000); } catch (AbandonedMutexException) { got = true; }
+            if (!got) return 0;
+            int rc;
+            try { rc = CommitWatch(dir); } finally { m.ReleaseMutex(); }
+            // Feld mit Enter/Esc zu: Zeiger kann noch versteckt sein -> ein paar Sekunden weiter aufpassen
+            // (Mutex schon frei, damit der Waechter fuers naechste Feld sofort starten kann)
+            var sw = Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 8000 && !cursorBack) { CursorGuard(); Thread.Sleep(15); }
+            return rc;
         }
+    }
+
+    // "Zeiger waehrend der Eingabe ausblenden" (Windows-Mauseinstellung): Beim Tippen versteckt Windows
+    // den Zeiger. Normale Fenster holen ihn bei der naechsten Mausbewegung per SetCursor zurueck,
+    // Rainmeter-Fenster tun das erst, wenn die Maus ein anderes Fenster/Element erreicht. Darum hier:
+    // Maus bewegt + Zeiger unsichtbar -> mit dem Fenster unter der Maus verbinden und Pfeil setzen.
+    [DllImport("user32.dll")] static extern bool GetCursorInfo(ref CURSORINFO ci);
+    [DllImport("user32.dll")] static extern IntPtr WindowFromPoint(PT p);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, IntPtr pid);
+    [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll")] static extern bool AttachThreadInput(uint a, uint b, bool attach);
+    [DllImport("user32.dll")] static extern IntPtr SetCursor(IntPtr c);
+    [DllImport("user32.dll")] static extern IntPtr LoadCursor(IntPtr inst, IntPtr name);
+    struct CURSORINFO { public int cbSize; public int flags; public IntPtr hCursor; public PT pt; }
+    static PT lastPos;
+    static bool havePos, typedHidden, cursorBack;
+    static void CursorGuard()
+    {
+        var ci = new CURSORINFO(); ci.cbSize = Marshal.SizeOf(typeof(CURSORINFO));
+        if (!GetCursorInfo(ref ci)) return;
+        bool showing = (ci.flags & 1) != 0;
+        if (!showing) typedHidden = true;
+        bool moved = havePos && (ci.pt.X != lastPos.X || ci.pt.Y != lastPos.Y);
+        lastPos = ci.pt; havePos = true;
+        if (!moved) return;
+        if (showing) { if (typedHidden) cursorBack = true; return; }
+        IntPtr w = WindowFromPoint(ci.pt);
+        if (w == IntPtr.Zero) return;
+        uint other = GetWindowThreadProcessId(w, IntPtr.Zero), me = GetCurrentThreadId();
+        if (other == 0 || other == me) return;
+        if (AttachThreadInput(me, other, true))
+        {
+            SetCursor(LoadCursor(IntPtr.Zero, (IntPtr)32512));   // IDC_ARROW
+            AttachThreadInput(me, other, false);
+        }
+        cursorBack = true;
+    }
+
+    // Text im offenen Feld sofort uebernehmen (wie rausgeklickt): commit.flag + Enter
+    static void SendCommit(string dir, IntPtr box)
+    {
+        try { File.WriteAllText(Path.Combine(dir, "commit.flag"), "1"); } catch { }
+        IntPtr edit = FindWindowEx(box, IntPtr.Zero, null, null);
+        IntPtr target = edit != IntPtr.Zero ? edit : box;
+        PostMessage(target, 0x0100, (IntPtr)0x0D, (IntPtr)0x001C0001);   // WM_KEYDOWN Enter
+        PostMessage(target, 0x0101, (IntPtr)0x0D, unchecked((IntPtr)(int)0xC01C0001));   // WM_KEYUP
+    }
+
+    // Notbremse aus form.lua: kein Waechter da, aber ein Feld offen -> jetzt uebernehmen
+    static int CommitNow(string dir)
+    {
+        IntPtr box = FindInputBox();
+        if (box == IntPtr.Zero) return 1;
+        SendCommit(dir, box);
+        return 0;
     }
 
     static int CommitWatch(string dir)
@@ -194,13 +258,11 @@ class TodoHotkey : Form
             if (fg) hadFocus = true;
             if (clickOutside || (hadFocus && !fg))
             {
-                try { File.WriteAllText(Path.Combine(dir, "commit.flag"), "1"); } catch { }
-                IntPtr edit = FindWindowEx(box, IntPtr.Zero, null, null);
-                IntPtr target = edit != IntPtr.Zero ? edit : box;
-                PostMessage(target, 0x0100, (IntPtr)0x0D, (IntPtr)0x001C0001);   // WM_KEYDOWN Enter
-                PostMessage(target, 0x0101, (IntPtr)0x0D, unchecked((IntPtr)(int)0xC01C0001));   // WM_KEYUP
+                SendCommit(dir, box);
                 return 0;
             }
+            // waehrend getippt wird: versteckten Zeiger bei Mausbewegung zurueckholen (jedes Mal neu)
+            CursorGuard(); cursorBack = false;
             Thread.Sleep(15);
         }
         return 0;
@@ -211,6 +273,7 @@ class TodoHotkey : Form
     {
         if (args.Length >= 2 && args[0] == "--check") return CheckWindow(args[1]);
         if (args.Length >= 1 && args[0] == "--commit") return Commit(Path.GetDirectoryName(Application.ExecutablePath));
+        if (args.Length >= 1 && args[0] == "--commit-now") return CommitNow(Path.GetDirectoryName(Application.ExecutablePath));
         if (args.Length >= 1 && args[0] == "--record") return Recorder.Record(Path.GetDirectoryName(Application.ExecutablePath), ReadWish(Path.GetDirectoryName(Application.ExecutablePath)));
         Run(args);
         return 0;

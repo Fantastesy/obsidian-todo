@@ -438,19 +438,40 @@ local function wasCommit()
 end
 
 local drawn = false
+local autoOpen          -- neuer Punkt: Titelfeld oeffnen, sobald das Fenster stillsteht
 local openInput
 function Update()
-	-- Notbremse: kam vom Waechter nichts zurueck, den gemerkten Klick trotzdem ausfuehren
-	if pending and os.time() - pending.at >= 3 then
-		local p = pending
-		pending, input = nil, nil
-		Click(p.what, p.arg)
+	-- Notbremse: kam vom Waechter nichts zurueck, den Text jetzt uebernehmen lassen (InputDone fuehrt
+	-- den gemerkten Klick dann aus). Hilft auch das nicht, den Klick trotzdem ausfuehren.
+	if pending then
+		local age = os.time() - pending.at
+		if age >= 1 and not pending.kicked then
+			pending.kicked = true
+			local dir = SKIN:GetVariable('@')
+			os.remove(dir .. 'commit.flag')
+			SKIN:Bang('["' .. dir .. 'TodoHotkey.exe" --commit-now]')
+		elseif age >= 4 then
+			local p = pending
+			pending, input = nil, nil
+			Click(p.what, p.arg)
+		end
 	end
 	if not drawn then
 		drawn = true
 		render()
-		-- neuer Punkt: gleich ins To-do-Feld zum Tippen
-		if f.mode == 'new' and f.title == '' then openInput('title', '', 'FieldTitle') end
+		-- neuer Punkt: gleich ins To-do-Feld zum Tippen. Aber erst, wenn das Fenster seine Groesse und
+		-- seinen Platz hat: es ist mittig verankert und wandert beim ersten Zeichnen noch. Ein vorher
+		-- geoeffnetes Feld bliebe an der alten Stelle stehen (ueber dem Formular).
+		if f.mode == 'new' and f.title == '' then autoOpen = { y = nil, n = 0 } end
+	elseif autoOpen then
+		local y = SKIN:GetVariable('CURRENTCONFIGY')
+		autoOpen.n = autoOpen.n + 1
+		if (y == autoOpen.y and autoOpen.n >= 2) or autoOpen.n >= 10 then
+			autoOpen = nil
+			if not input then openInput('title', '', 'FieldTitle') end
+		else
+			autoOpen.y = y
+		end
 	end
 	return 0
 end

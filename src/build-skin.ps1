@@ -593,7 +593,7 @@ $extra
 $form = @"
 ; Formular der Obsidian-Todo-Liste. Erzeugt von ..\@Resources\build-skin.ps1 - Aenderungen dort machen.
 [Rainmeter]
-Update=1000
+Update=100
 AccurateText=1
 DynamicWindowSize=1
 
