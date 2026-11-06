@@ -10,6 +10,7 @@
 - **Hintergrund:** „Durchsichtig“ ist jetzt wirklich ganz durchsichtig, „Normal“ und „Leicht“ sind durchsichtiger als vorher. Eine feine Umrandung zeigt immer, wo der Kasten ist. Die bisherige Einstellung wird automatisch übernommen.
 - **Rausklicken löscht nichts mehr:** Wer im Formular den Namen eintippt und dann direkt ins Notizfeld (oder irgendwo anders hin) klickt, behält den Text – vorher war er weg. Gilt auch für Notizen und Unteraufgaben in der Liste und für neue Tags. Ein leeres Feld verschwindet einfach; ein ganzer Eintrag wird beim Rausklicken aber nie gelöscht.
 - Kurzhilfe ergänzt (Ziehen).
+- **KDE: Abmelden und Neustart hängen nicht mehr:** Die Seitenleiste war für KDE ein Dock-Fenster, das sich beim Abmelden nicht schließen ließ („Plasma-Arbeitsflächenbereich hat sich nicht beendet“, bis zu 2 Minuten Warten). Jetzt geht das Abmelden sofort, auch wenn die Liste gerade ausgefahren ist.
 
 ### Nur Linux (KDE)
 - Updates über „Jetzt aktualisieren“ starten Plasma am Ende selbst neu, damit die neue Version sofort da ist.

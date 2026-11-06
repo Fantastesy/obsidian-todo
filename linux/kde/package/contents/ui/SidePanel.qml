@@ -84,7 +84,10 @@ Item {
         id: edge
         visible: false
         type: PlasmaCore.Dialog.Notification
-        flags: Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus | Qt.FramelessWindowHint
+        // kein Qt.WindowStaysOnTopHint: damit macht libplasma ein Dock-Fenster daraus, das KWin beim
+        // Abmelden nicht schliessen kann ("Plasma-Arbeitsflaechenbereich hat sich nicht beendet").
+        // Als Benachrichtigungs-Fenster liegt es trotzdem ueber normalen Fenstern.
+        flags: Qt.WindowDoesNotAcceptFocus | Qt.FramelessWindowHint
         location: PlasmaCore.Types.Floating
         backgroundHints: PlasmaCore.Types.NoBackground
         hideOnWindowDeactivate: false
@@ -108,7 +111,8 @@ Item {
         id: panel
         visible: side.shown || side.slide > 0
         type: PlasmaCore.Dialog.Notification
-        flags: Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint
+        // kein Qt.WindowStaysOnTopHint, siehe Rand-Streifen
+        flags: Qt.FramelessWindowHint
         location: PlasmaCore.Types.Floating
         backgroundHints: PlasmaCore.Types.NoBackground
         hideOnWindowDeactivate: false
