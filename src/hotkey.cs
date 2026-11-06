@@ -243,8 +243,17 @@ class TodoHotkey : Form
         if (box == IntPtr.Zero) return 1;
         bool hadFocus = false;
         bool wasDown = MouseDown();     // Taste noch vom Klick gedrueckt, der das Feld geoeffnet hat: erst loslassen
+        // Lebenszeichen fuer die Lua-Seite: fehlt es bei offenem Feld, startet sie den Waechter neu
+        // (Klicks auf Rainmeter-Fenster kommen bei offenem Feld gar nicht an - ohne Waechter haengt sonst alles)
+        string alive = Path.Combine(dir, "watch.alive");
+        long lastBeat = -1;
         while (IsWindow(box) && IsWindowVisible(box))
         {
+            if (sw.ElapsedMilliseconds - lastBeat >= 500)
+            {
+                lastBeat = sw.ElapsedMilliseconds;
+                try { File.WriteAllText(alive, ((long)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds).ToString()); } catch { }
+            }
             bool down = MouseDown();
             bool clickOutside = false;
             if (down && !wasDown)

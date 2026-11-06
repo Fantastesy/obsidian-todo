@@ -15,14 +15,31 @@ local MAX = 8
 local LEFT, RIGHT = 22, 22 + 438       -- linke Spalte
 local tags = {}
 local drawn = false
+local adding = false   -- "+ Neuer Tag"-Feld offen
 local addBox          -- Flaeche von "+ Neuer Tag": { x, y, w, shape }
 
 -- Rausklicken soll nichts loeschen: Eingabefelder haben FocusDismiss=0, dazu laeuft
 -- "TodoHotkey.exe --commit" (hotkey.cs). Verliert das Feld den Fokus, legt der Waechter commit.flag an
 -- und drueckt Enter - der Text wird uebernommen. commitWatch() beim Oeffnen, wasCommit() beim Uebernehmen.
+local watchAt = 0
 local function commitWatch()
 	local dir = SKIN:GetVariable('@')
 	os.remove(dir .. 'commit.flag')
+	watchAt = os.time()
+	SKIN:Bang('["' .. dir .. 'TodoHotkey.exe" --commit]')
+end
+-- Notbremse: Solange ein Feld offen ist, kommen Klicks auf Rainmeter-Fenster gar nicht an. Fehlt der
+-- Waechter (Lebenszeichen watch.alive aelter als 3 s), haengt sonst alles -> Waechter neu starten.
+local function keepWatch(open)
+	if not open or os.time() - watchAt < 3 then return end
+	local dir = SKIN:GetVariable('@')
+	local fh = io.open(dir .. 'commit.flag', 'rb')
+	if fh then fh:close() return end          -- Enter ist schon unterwegs
+	fh = io.open(dir .. 'watch.alive', 'rb')
+	local n = fh and tonumber(fh:read('*a'))
+	if fh then fh:close() end
+	if n and os.time() - n < 3 then return end
+	watchAt = os.time()
 	SKIN:Bang('["' .. dir .. 'TodoHotkey.exe" --commit]')
 end
 local function wasCommit()
@@ -106,6 +123,7 @@ end
 
 function Update()
 	if not drawn then drawn = true; render() end
+	keepWatch(adding)
 	return 0
 end
 
@@ -155,13 +173,15 @@ function AddStart()
 	-- verdeckt damit das Eingabefeld; einfaches "Topmost" (1) tut das nicht
 	SKIN:Bang('!ZPos', '1')
 	SKIN:Bang('!CommandMeasure', 'MeasureTagInput', 'ExecuteBatch 1')
+	adding = true
 	commitWatch()
 end
 
 -- Esc / weggeklickt: Knopf wieder normal
-function AddCancel() render() end
+function AddCancel() adding = false; render() end
 
 function AddDone()
+	adding = false
 	wasCommit()
 	render()
 	local name = trim(SKIN:GetVariable('NewTag') or ''):gsub('^#+', ''):gsub('%s+', '-'):gsub('[#,:;%.!%?%(%)%[%]{}"\'<>]', '')

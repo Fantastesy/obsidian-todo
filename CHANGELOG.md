@@ -10,6 +10,9 @@
 - **Hintergrund:** „Durchsichtig“ ist jetzt wirklich ganz durchsichtig, „Normal“ und „Leicht“ sind durchsichtiger als vorher. Eine feine Umrandung zeigt immer, wo der Kasten ist. Die bisherige Einstellung wird automatisch übernommen. Bei „Durchsichtig“ hat die Schrift einen leichten Schatten und bleibt so auch auf hellem Hintergrund lesbar. In der Seitenleiste ist der Kasten nur so hoch wie die Einträge, nicht mehr so hoch wie der ganze Bildschirm.
 - **Rausklicken löscht nichts mehr:** Wer im Formular den Namen eintippt und dann direkt ins Notizfeld (oder irgendwo anders hin) klickt, behält den Text – vorher war er weg. Gilt auch für Notizen und Unteraufgaben in der Liste und für neue Tags. Ein leeres Feld verschwindet einfach; ein ganzer Eintrag wird beim Rausklicken aber nie gelöscht.
 - Kurzhilfe ergänzt (Ziehen).
+- **Namensfeld sitzt wieder in der Zeile (Windows):** Beim neuen Eintrag konnte das Eingabefeld über dem Formular hängen bleiben, danach ließ sich nichts mehr anklicken. Jetzt öffnet es sich erst, wenn das Formular an seinem Platz steht. Fällt der Helfer im Hintergrund aus, der das Rausklicken erkennt, startet er von selbst neu, statt alles zu blockieren.
+- **Mauszeiger nach dem Tippen (Windows):** Mit der Windows-Einstellung „Zeiger während der Eingabe ausblenden“ blieb der Zeiger über der Liste und dem Formular unsichtbar, bis man rausfuhr. Jetzt ist er bei der ersten Mausbewegung wieder da.
+- **Notiz im Formular (Linux):** Nach „+ Notiz / Link“ landete das Getippte im Namensfeld. Jetzt springt der Cursor in die neue Notizzeile. Bleibt sie leer, verschwindet sie wieder.
 - **KDE: Abmelden und Neustart hängen nicht mehr:** Die Seitenleiste war für KDE ein Dock-Fenster, das sich beim Abmelden nicht schließen ließ („Plasma-Arbeitsflächenbereich hat sich nicht beendet“, bis zu 2 Minuten Warten). Jetzt geht das Abmelden sofort, auch wenn die Liste gerade ausgefahren ist.
 
 ### Nur Linux (KDE)

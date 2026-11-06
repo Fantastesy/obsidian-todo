@@ -431,13 +431,21 @@ Window {
             // ---------- Notizen ----------
             Caption { text: "Notizen, Links, Dateien" }
             Repeater {
+                id: notesRep
                 model: dlg.notes.length
                 delegate: RowLayout {
                     Layout.fillWidth: true
+                    property alias field: noteField
                     Field {
+                        id: noteField
                         Layout.fillWidth: true
                         text: dlg.notes[index]
                         onTextEdited: { var n = dlg.notes; n[index] = text; }
+                        // leer gelassen und woanders hingeklickt: Zeile wieder weg (wie unter Windows)
+                        onActiveFocusChanged: if (!activeFocus && Core.trim(text) === "" && dlg.visible) {
+                            var i = index;
+                            Qt.callLater(function () { if (i < dlg.notes.length && Core.trim(dlg.notes[i]) === "") { var n = dlg.notes.slice(); n.splice(i, 1); dlg.notes = n; } });
+                        }
                     }
                     Chip {
                         flat: true; iconName: "edit-delete-remove"; textColor: P.done
@@ -447,7 +455,11 @@ Window {
             }
             RowLayout {
                 spacing: Kirigami.Units.smallSpacing
-                Chip { iconName: "list-add"; text: "Notiz / Link"; onClicked: { var n = dlg.notes.slice(); n.push(""); dlg.notes = n } }
+                // neue Zeile bekommt gleich den Cursor (sonst landet das Getippte im Namensfeld)
+                Chip { iconName: "list-add"; text: "Notiz / Link"; onClicked: {
+                    var n = dlg.notes.slice(); n.push(""); dlg.notes = n;
+                    Qt.callLater(function () { var it = notesRep.itemAt(dlg.notes.length - 1); if (it) it.field.forceActiveFocus(); });
+                } }
                 Chip { iconName: "mail-attachment"; text: "Datei"; onClicked: fileDialog.open() }
             }
 

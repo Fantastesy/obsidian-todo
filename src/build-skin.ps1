@@ -171,6 +171,7 @@ FontSize=#FontSize#
 FocusDismiss=0
 DefaultValue=#EditText#
 Command1=[!SetVariable NewItem """`$UserInput`$"""][!CommandMeasure MeasureTodo "SaveEdit()"]
+OnDismissAction=[!CommandMeasure MeasureTodo "EditCancel()"]
 
 [MeasureFilePick]
 Measure=Plugin
