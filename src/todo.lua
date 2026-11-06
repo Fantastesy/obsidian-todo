@@ -69,6 +69,16 @@ function setupMode()
 	SKIN:Bang('!SetVariable', 'ColorBg', '12,12,18,' .. op)
 	-- feine helle Umrandung, damit man den Kasten auch bei wenig/keinem Hintergrund sieht
 	SKIN:Bang('!SetVariable', 'ColorBorder', '255,255,255,' .. (op <= 100 and 90 or 40))
+	-- Durchsichtig: Schrift bekommt einen leichten dunklen Schatten, damit sie auch auf hellem
+	-- Hintergrund lesbar bleibt (der Hintergrund selbst wird nicht abgedunkelt)
+	if op <= 1 then
+		SKIN:Bang('!SetOptionGroup', 'List', 'StringEffect', 'Shadow')
+		SKIN:Bang('!SetOptionGroup', 'List', 'FontEffectColor', '0,0,0,210')
+		for _, m in ipairs({ 'MeterTitle', 'MeterCount', 'MeterHelp', 'MeterFold' }) do
+			SKIN:Bang('!SetOption', m, 'StringEffect', 'Shadow')
+			SKIN:Bang('!SetOption', m, 'FontEffectColor', '0,0,0,210')
+		end
+	end
 	mode = SKIN:GetVariable('Mode') or 'sidebar'
 	workH = tonumber(SKIN:GetVariable('WORKAREAHEIGHT')) or 1080
 	if mode == 'sidebar' then
@@ -575,6 +585,7 @@ local function render(openCount, doneCount)
 	if isCollapsed then
 		SKIN:Bang('!HideMeterGroup', 'List')
 		SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0.5,0.5,' .. (width - 1) .. ',' .. (listTop - 5) .. ',12 | Fill Color #ColorBg# | StrokeWidth 1 | Stroke Color #ColorBorder#')
+		SKIN:Bang('!SetOption', 'MeterBg', 'Shape2', 'Rectangle 0,0,0,0 | StrokeWidth 0')
 		SKIN:Bang('!UpdateMeter', '*')
 		SKIN:Bang('!Redraw')
 		return
@@ -751,10 +762,14 @@ local function render(openCount, doneCount)
 	if doneCount > 0 then SKIN:Bang('!ShowMeter', 'MeterClean') else SKIN:Bang('!HideMeter', 'MeterClean') end
 	y = y + math.max(rowH, 32) + 16
 
-	-- Seitenleiste: Hintergrund ueber die ganze Bildschirmhoehe (oben und unten je 8 Pixel Abstand)
+	-- Hintergrund nur so hoch wie die Eintraege (auch in der Seitenleiste; frueher bildschirmhoch,
+	-- das sah bei "Durchsichtig" wie ein leerer Rahmen aus und hat Klicks darunter abgefangen)
+	-- Seitenleiste: darunter eine unsichtbare Flaeche (Deckkraft 1) bis unten, damit die Liste offen bleibt,
+	-- wenn die Maus vom Rand (Bildschirmmitte) zur Liste hinauf faehrt
 	local bgH = y
-	if mode == 'sidebar' or panel then bgH = math.max(y, workH - 16) end
 	lastBgH = bgH
+	local hitH = (mode == 'sidebar' or panel) and math.max(y, workH - 16) or 0
+	SKIN:Bang('!SetOption', 'MeterBg', 'Shape2', 'Rectangle 0,0,' .. width .. ',' .. hitH .. ' | Fill Color 0,0,0,1 | StrokeWidth 0')
 	SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0.5,0.5,' .. (width - 1) .. ',' .. (bgH - 1) .. ',12 | Fill Color #ColorBg# | StrokeWidth 1 | Stroke Color #ColorBorder#')
 	setCount(openCount)
 	SKIN:Bang('!UpdateMeter', '*')

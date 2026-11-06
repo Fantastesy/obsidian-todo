@@ -124,9 +124,11 @@ Item {
             clip: true
             // ganzes Panel-Fenster (bis an den Bildschirmrand) zaehlt als "Maus in der Liste"
             HoverHandler { onHoveredChanged: hovered ? side.enter() : side.leave() }
+            // sichtbarer Kasten nur so hoch wie die Eintraege; das Fenster darum bleibt bildschirmhoch,
+            // damit die Liste offen bleibt, wenn die Maus vom Rand (Bildschirmmitte) hinauf faehrt
             TodoView {
                 width: Plasmoid.configuration.listWidth
-                height: parent.height
+                height: Math.min(implicitHeight, parent.height)
                 // drin: margin vom Rand; draussen: ganz hinter dem Rand
                 x: side.onLeft
                     ? side.margin - (Plasmoid.configuration.listWidth + side.margin) * (1 - side.slide)

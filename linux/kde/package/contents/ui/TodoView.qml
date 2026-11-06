@@ -1,5 +1,6 @@
 // Liste der Punkte im Windows-Look: dunkel, halbdurchsichtig, abgerundet
 import QtQuick
+import QtQuick.Effects
 import org.kde.plasma.plasmoid
 import QtQuick.Layouts
 import org.kde.plasma.components as PC3
@@ -115,6 +116,17 @@ Rectangle {
         anchors.top: parent.top
         anchors.margins: Kirigami.Units.largeSpacing
         spacing: Kirigami.Units.smallSpacing
+        // Durchsichtig: Schrift bekommt einen leichten dunklen Schatten, damit sie auch auf hellem
+        // Hintergrund lesbar bleibt (der Hintergrund selbst wird nicht abgedunkelt)
+        layer.enabled: Plasmoid.configuration.opacity <= 1
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowColor: "#E6000000"
+            blurMax: 8
+            shadowBlur: 0.5
+            shadowHorizontalOffset: 1
+            shadowVerticalOffset: 1
+        }
 
         // ---------- Kopf ----------
         RowLayout {
