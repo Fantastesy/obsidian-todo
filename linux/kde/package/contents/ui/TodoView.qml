@@ -116,6 +116,36 @@ Rectangle {
         onPressed: function(mouse) { view.forceActiveFocus(); mouse.accepted = false; }
     }
 
+    // Durchsichtig: weicher dunkler Schein hinter Schrift und Knoepfen (wie KDE bei Desktop-Symbolen),
+    // damit alles auch auf hellem Hintergrund lesbar bleibt. Die Schrift selbst liegt scharf darueber:
+    // der Effekt zeichnet nur eine schwarze, weichgezeichnete Kopie der Spalte darunter.
+    MultiEffect {            // breiter, weicher Schein
+        visible: Plasmoid.configuration.opacity <= 1
+        source: col
+        anchors.fill: col
+        autoPaddingEnabled: true
+        colorization: 1.0
+        colorizationColor: "black"
+        brightness: -1.0
+        blurEnabled: true
+        blurMax: 24
+        blur: 0.8
+        opacity: 0.7
+    }
+    MultiEffect {            // enger, dichter Rand direkt an der Schrift
+        visible: Plasmoid.configuration.opacity <= 1
+        source: col
+        anchors.fill: col
+        autoPaddingEnabled: true
+        colorization: 1.0
+        colorizationColor: "black"
+        brightness: -1.0
+        blurEnabled: true
+        blurMax: 6
+        blur: 0.6
+        opacity: 0.9
+    }
+
     ColumnLayout {
         id: col
         anchors.left: parent.left
@@ -123,17 +153,6 @@ Rectangle {
         anchors.top: parent.top
         anchors.margins: Kirigami.Units.largeSpacing
         spacing: Kirigami.Units.smallSpacing
-        // Durchsichtig: Schrift bekommt einen leichten dunklen Schatten, damit sie auch auf hellem
-        // Hintergrund lesbar bleibt (der Hintergrund selbst wird nicht abgedunkelt)
-        layer.enabled: Plasmoid.configuration.opacity <= 1
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowColor: "#E6000000"
-            blurMax: 8
-            shadowBlur: 0.5
-            shadowHorizontalOffset: 1
-            shadowVerticalOffset: 1
-        }
 
         // ---------- Kopf ----------
         RowLayout {
@@ -147,7 +166,8 @@ Rectangle {
                 enabled: !view.inPanel && !Plasmoid.immutable
                 cursorShape: Qt.SizeAllCursor
                 onHoveredChanged: view.setDirectMove(hovered)
-            }            PC3.Label {
+            }
+            PC3.Label {
                 text: "Todo"
                 color: P.text
                 font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.45 * Plasmoid.configuration.fontScale
@@ -178,7 +198,7 @@ Rectangle {
                 text: view.app.configMissing ? "nicht eingerichtet"
                     : view.app.fileMissing ? "Datei fehlt"
                     : view.app.model ? view.app.model.openCount + " offen" : ""
-                color: view.app.fileMissing || view.app.configMissing ? P.over : P.done
+                color: view.app.fileMissing || view.app.configMissing ? P.over : P.muted(Plasmoid.configuration.opacity <= 1)
                 font.weight: Font.DemiBold
             }
             // in der Seitenleiste ist die Liste ohnehin bildschirmhoch: kein Einklappen
@@ -225,7 +245,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.leftMargin: Kirigami.Units.smallSpacing
                 Layout.topMargin: Kirigami.Units.smallSpacing
-                color: P.done
+                color: P.muted(Plasmoid.configuration.opacity <= 1)
                 text: moreLabel.hidden > 0 ? "+ " + moreLabel.hidden + " weitere in Obsidian" : "Alles erledigt"
                 HoverHandler { cursorShape: moreLabel.hidden > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor }
                 TapHandler { onTapped: if (moreLabel.hidden > 0) view.app.openInObsidian() }
@@ -246,7 +266,7 @@ Rectangle {
                 PC3.Label {
                     visible: view.app.model && view.app.model.doneCount > 0
                     text: "Erledigte archivieren"
-                    color: P.done
+                    color: P.muted(Plasmoid.configuration.opacity <= 1)
                     font: Kirigami.Theme.smallFont
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                     TapHandler { onTapped: view.app.cleanup() }

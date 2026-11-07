@@ -10,6 +10,8 @@ import "../code/palette.js" as P
 ColumnLayout {
     id: taskRow
     property var app
+    // Hintergrund "Durchsichtig": hellere Termine, deckende Tag-Etiketten (palette.js)
+    readonly property bool clear: Plasmoid.configuration.opacity <= 1
     property var row
     // Liste (TodoView) und Platz in ihr: zum Verschieben per Ziehen
     property var list: null
@@ -95,14 +97,14 @@ ColumnLayout {
                     source: taskRow.row.repeat ? "view-refresh" : "view-calendar"
                     implicitWidth: Kirigami.Units.iconSizes.small
                     implicitHeight: Kirigami.Units.iconSizes.small
-                    color: P.dueColor(taskRow.row.dueState)
+                    color: P.dueColor(taskRow.row.dueState, taskRow.clear)
                     isMask: true
                 }
                 PC3.Label {
                     text: taskRow.row.dueLabel
                     font.weight: Font.DemiBold
                     font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * taskRow.fs
-                    color: P.dueColor(taskRow.row.dueState)
+                    color: P.dueColor(taskRow.row.dueState, taskRow.clear)
                 }
             }
             // Tags als farbige Etiketten (Farbe aus den Einstellungen)
@@ -114,16 +116,16 @@ ColumnLayout {
                     model: taskRow.row.tags
                     delegate: Rectangle {
                         radius: height / 2   // Pille, ganz rund
-                        color: P.tagFill(modelData.color)
+                        color: P.tagFill(modelData.color, taskRow.clear)
                         border.width: 1
-                        border.color: P.tagFill(modelData.color)
+                        border.color: P.tagBorder(modelData.color, taskRow.clear)
                         implicitWidth: tagLabel.implicitWidth + Kirigami.Units.smallSpacing * 4
                         implicitHeight: tagLabel.implicitHeight + 4
                         PC3.Label {
                             id: tagLabel
                             anchors.centerIn: parent
                             text: modelData.name
-                            color: P.tagText(modelData.color)
+                            color: P.tagText(modelData.color, taskRow.clear)
                             font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 0.85 * taskRow.fs
                             font.weight: Font.DemiBold
                         }
@@ -136,7 +138,7 @@ ColumnLayout {
                 visible: taskRow.row.subs.length > 0
                 text: taskRow.row.subsDone + "/" + taskRow.row.subs.length
                 font.weight: Font.DemiBold
-                color: P.done
+                color: P.muted(taskRow.clear)
             }
             Chip {
                 id: clip

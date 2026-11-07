@@ -30,7 +30,8 @@ update)
     docker cp "$(cd "$tmp" && (pwd -W 2>/dev/null || pwd))/package" $c:/tmp/pkg >/dev/null
     rm -rf "$tmp"
     docker exec $c bash -c 'chown -R abc /tmp/pkg'
-    docker exec $c insession bash -c 'kpackagetool6 -t Plasma/Applet -u /tmp/pkg >/dev/null 2>&1 && echo "Widget aktualisiert"
+    docker exec $c insession bash -c 'd=$HOME/.local/share/plasma/plasmoids/io.github.fantastesy.obsidiantodo
+        if command -v kpackagetool6 >/dev/null; then kpackagetool6 -t Plasma/Applet -u /tmp/pkg >/dev/null 2>&1; else rm -rf "$d" && cp -r /tmp/pkg "$d"; fi && echo "Widget aktualisiert"
         touch /tmp/obsidian-todo-test.enable; pkill -x plasmashell; sleep 2
         (setsid plasmashell > /tmp/plasma.log 2>&1 &) ; sleep 12; pgrep -x plasmashell >/dev/null && echo "Plasma laeuft"'
     ;;
