@@ -1,6 +1,6 @@
 # Änderungen
 
-## 1.3.0 – 3. November 2026
+## 1.3.0 – 7. November 2026
 
 ### Windows und Linux (KDE)
 - **Punkte verschieben:** Einen Punkt mit der Maus an eine andere Stelle ziehen – eine Linie zeigt, wo er landet. Die Reihenfolge steht danach so in der Todo.md (auch in Obsidian). Ein normaler Klick hakt weiterhin ab.
