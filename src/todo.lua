@@ -565,6 +565,21 @@ local function setCount(openCount)
 	end
 end
 
+-- Eingeklappt: Rainmeter zaehlt versteckte Meter mit ihrer Position in die Fenstergroesse.
+-- Darum alle Listen-Meter nach oben schieben, sonst bliebe das (unsichtbare) Fenster so gross wie vorher
+-- und finge Klicks auf den Desktop ab. render() setzt die Positionen beim Aufklappen neu.
+local function parkList()
+	local function park(m) SKIN:Bang('!SetOption', m, 'Y', 0) end
+	for i = 1, maxItems do
+		for _, p in ipairs({ 'Item', 'Progress', 'Clip', 'NoteAdd', 'SubAdd', 'FileAdd', 'Drop' }) do park(p .. i) end
+		park('Item' .. i .. 'Box'); park('Clip' .. i .. 'Btn')
+		for k = 1, MAXTAGS do park('Tag' .. i .. '_' .. k); park('TagBg' .. i .. '_' .. k) end
+	end
+	for k = 1, maxNotes do park('Note' .. k) end
+	for k = 1, maxSubs do park('Sub' .. k); park('Sub' .. k .. 'Box') end
+	for _, m in ipairs({ 'MeterMore', 'AddBtn', 'MeterAdd', 'MeterClean', 'DropAll', 'DropLine' }) do park(m) end
+end
+
 local function render(openCount, doneCount)
 	lastOpen, lastDone = openCount, doneCount
 	setCount(openCount)
@@ -584,6 +599,7 @@ local function render(openCount, doneCount)
 	SKIN:Bang('!SetOption', 'MeterFold', 'Text', SKIN:GetVariable(isCollapsed and 'FoldClosed' or 'FoldOpen'))
 	if isCollapsed then
 		SKIN:Bang('!HideMeterGroup', 'List')
+		parkList()
 		SKIN:Bang('!SetOption', 'MeterBg', 'Shape', 'Rectangle 0.5,0.5,' .. (width - 1) .. ',' .. (listTop - 5) .. ',12 | Fill Color #ColorBg# | StrokeWidth 1 | Stroke Color #ColorBorder#')
 		SKIN:Bang('!SetOption', 'MeterBg', 'Shape2', 'Rectangle 0,0,0,0 | StrokeWidth 0')
 		SKIN:Bang('!UpdateMeter', '*')

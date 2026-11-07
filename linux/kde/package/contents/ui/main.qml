@@ -198,7 +198,7 @@ PlasmoidItem {
         if (!/\.md$/i.test(path)) path += ".md";
         run('f=' + q(path) + '; d=$(dirname "$f"); a="$d/Todo-Archiv.md"; v="$d"; p="$d"; '
             + 'while [ "$p" != "/" ] && [ -n "$p" ]; do [ -d "$p/.obsidian" ] && { v="$p"; break; }; p=$(dirname "$p"); done; '
-            + 'mkdir -p "$d"; [ -f "$f" ] || printf "# Todo\\n\\n- [ ] Mein erster Punkt\\n" > "$f"; '
+            + 'mkdir -p "$d"; [ -f "$f" ] || printf "# Todo\\n\\n- [ ] Mein erster Eintrag\\n" > "$f"; '
             + '[ -f "$a" ] || printf "# Todo-Archiv\\n" > "$a"; '
             + 'c="$HOME/.config/obsidian-todo/config"; mkdir -p "$(dirname "$c")"; touch "$c"; '
             + 'grep -v -E "^(VAULT|VAULT_NAME|TODO_FILE|ARCHIVE_FILE)=" "$c" > "$c.tmp"; '

@@ -1094,16 +1094,16 @@ New-Item -ItemType Directory -Force "$skin\Formular" | Out-Null
 # Darunter die Kurzhilfe: "#..." = Ueberschrift, sonst "Stichwort: Erklaerung" (Stichwort fett)
 $helpLines = @(
     '#So funktioniert''s'
-    'Klick: Punkt abhaken (nochmal klicken = rückgängig)'
-    'Rechtsklick: Punkt bearbeiten oder löschen'
-    'Ziehen: Punkt mit der Maus an eine andere Stelle schieben (neue Punkte mit Datum kommen von selbst nach oben)'
+    'Klick: Eintrag abhaken (nochmal klicken = rückgängig)'
+    'Rechtsklick: Eintrag bearbeiten oder löschen'
+    'Ziehen: Eintrag mit der Maus an eine andere Stelle schieben (neue Einträge mit Datum kommen von selbst nach oben)'
     '+ Neuer Eintrag: neuen Eintrag anlegen, überall auch mit dem Tastenkürzel (siehe oben)'
-    'Enter: speichert den Punkt sofort (Datum vorher wählen oder später ergänzen)'
+    'Enter: speichert den Eintrag sofort (Datum vorher wählen oder später ergänzen)'
     'Titel „Todo“: Liste in Obsidian öffnen'
     'Seitenleiste: Maus an den Bildschirmrand – die Liste fährt herein'
     'Anmelden, Aufwachen, Entsperren: die Liste kommt kurz von selbst'
     'Farben: orange = heute fällig, rot = überfällig'
-    'Erledigte archivieren: abgehakte Punkte wandern ins Archiv'
+    'Erledigte archivieren: abgehakte Einträge wandern ins Archiv'
 )
 # ---------- Einstellungen-Fenster: Config ObsidianTodo\Einstellungen, zwei Spalten ----------
 $hw = 960                       # Fensterbreite
@@ -1451,7 +1451,7 @@ $hini += Row 'Reveal' 'Beim Anmelden/Aufwachen einblenden' $colR '22R' '#RevealP
     @('10 s', '^10$', "$(P RevealPerItem 10)$refAll"),
     @('5 s', '^5$', "$(P RevealPerItem 5)$refAll"),
     @('Aus', '^0$', "$(P RevealPerItem 0)$refAll"))
-$hini += Small 'RevealInfo' 'Sekunden pro offenem Punkt (höchstens 2 Minuten).' $colR
+$hini += Small 'RevealInfo' 'Sekunden pro offenem Eintrag (höchstens 2 Minuten).' $colR
 $hini += Row 'Remind' 'Erinnerungen' $colR '22R' '#RemindOn#-#RemindLead#' @(
     @('15 Min vorher', '^1-15$', "$(P RemindOn 1)$(P RemindLead 15)$refAll"),
     @('5 Min vorher', '^1-5$', "$(P RemindOn 1)$(P RemindLead 5)$refAll"),

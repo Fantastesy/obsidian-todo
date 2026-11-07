@@ -32,7 +32,7 @@ while ($p) {
     if ($parent -eq $p) { break }
     $p = $parent
 }
-if (-not (Test-Path -LiteralPath $todo)) { [IO.File]::WriteAllText($todo, "# Todo`n`n- [ ] Mein erster Punkt`n", $utf8) }
+if (-not (Test-Path -LiteralPath $todo)) { [IO.File]::WriteAllText($todo, "# Todo`n`n- [ ] Mein erster Eintrag`n", $utf8) }
 if (-not (Test-Path -LiteralPath $archive)) { [IO.File]::WriteAllText($archive, "# Todo-Archiv`n", $utf8) }
 
 function Url($s) { [Uri]::EscapeDataString($s) }

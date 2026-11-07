@@ -366,7 +366,7 @@ local function render()
 		local n = f.notes[k]
 		show('Note' .. k, n ~= nil); show('NoteDel' .. k, n ~= nil)
 		if n then
-			set('Note' .. k, 'Text', n)
+			set('Note' .. k, 'Text', n ~= '' and n or '\194\160')   -- neue, noch leere Zeile (geschuetztes Leerzeichen: volle Zeilenhoehe)
 			set('Note' .. k, 'Y', y)
 			set('NoteDel' .. k, 'Y', y)
 			local h = heightOf('Note' .. k)
@@ -484,8 +484,8 @@ function Update()
 		local y = SKIN:GetVariable('CURRENTCONFIGY')
 		autoOpen.n = autoOpen.n + 1
 		if (y == autoOpen.y and autoOpen.n >= 2) or autoOpen.n >= 10 then
-			autoOpen = nil
-			if not input then openInput('title', '', 'FieldTitle') end
+			local a = autoOpen; autoOpen = nil
+			if not input then openInput(a.kind or 'title', '', a.meter or 'FieldTitle', a.index) end
 		else
 			autoOpen.y = y
 		end
@@ -526,7 +526,10 @@ local function needDate() if not f.date then f.date = today() end end
 -- Eingabe abgebrochen (Esc): gemerkten Klick trotzdem ausfuehren
 function InputCancel()
 	if not input then return end
+	local e = input
 	input = nil
+	-- neue Notizzeile ohne Text: wieder weg
+	if e.kind == 'note' and f.notes[e.index] == '' then table.remove(f.notes, e.index) end
 	local p = pending
 	pending = nil
 	if p then return Click(p.what, p.arg) end
@@ -582,7 +585,7 @@ local function finish(action)
 		out[#out + 1] = 'date=' .. (f.date and iso(f.date) or '')
 		out[#out + 1] = 'time=' .. (f.time or '')
 		out[#out + 1] = 'rule=' .. f.rule
-		for _, n in ipairs(f.notes) do out[#out + 1] = 'note=' .. n end
+		for _, n in ipairs(f.notes) do if trim(n) ~= '' then out[#out + 1] = 'note=' .. n end end
 		for _, t in ipairs(f.tags) do out[#out + 1] = 'tag=' .. t end
 	end
 	local fh = io.open(res .. 'form-out.txt', 'wb')
@@ -596,6 +599,11 @@ function Click(what, arg)
 	if input then
 		pending = { what = what, arg = arg, at = os.time() }
 		return
+	end
+	-- vor dem Oeffnen der neuen Notizzeile woanders geklickt: leere Zeile wieder weg
+	if autoOpen and autoOpen.kind == 'note' then
+		if f.notes[autoOpen.index] == '' then table.remove(f.notes, autoOpen.index) end
+		autoOpen = nil
 	end
 	errorText = nil
 	if what ~= 'delete' then confirmDelete = false end
@@ -660,7 +668,14 @@ function Click(what, arg)
 			local i = hasTag(d.name)
 			if i then table.remove(f.tags, i) else f.tags[#f.tags + 1] = d.name end
 		end
-	elseif what == 'noteadd' then return openInput('note', '', 'NoteAdd', #f.notes + 1)
+	elseif what == 'noteadd' then
+		-- erst eine leere Notizzeile zeichnen und das Feld dort oeffnen (nicht auf dem Knopf).
+		-- Wie beim Titel erst, wenn das mittig verankerte Fenster nach dem Wachsen stillsteht.
+		local k = #f.notes + 1
+		f.notes[k] = ''
+		render()
+		autoOpen = { y = nil, n = 0, kind = 'note', meter = 'Note' .. k, index = k }
+		return
 	elseif what == 'file' then return SKIN:Bang('!CommandMeasure', 'MeasureFilePick', 'Run')
 	elseif what == 'cancel' then return SKIN:Bang('!DeactivateConfig')
 	elseif what == 'delete' then

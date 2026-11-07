@@ -12,6 +12,10 @@
 - Kurzhilfe ergänzt (Ziehen).
 - **Namensfeld sitzt wieder in der Zeile (Windows):** Beim neuen Eintrag konnte das Eingabefeld über dem Formular hängen bleiben, danach ließ sich nichts mehr anklicken. Jetzt öffnet es sich erst, wenn das Formular an seinem Platz steht. Fällt der Helfer im Hintergrund aus, der das Rausklicken erkennt, startet er von selbst neu, statt alles zu blockieren.
 - **Mauszeiger nach dem Tippen (Windows):** Mit der Windows-Einstellung „Zeiger während der Eingabe ausblenden“ blieb der Zeiger über der Liste und dem Formular unsichtbar, bis man rausfuhr. Jetzt ist er bei der ersten Mausbewegung wieder da.
+- **Neue Notiz im Formular (Windows):** Das Eingabefeld öffnet sich in einer neuen Notizzeile statt auf dem Knopf „+ Notiz / Link“. Bleibt sie leer (oder Esc), verschwindet sie wieder.
+- **Eingeklappte Liste (Windows):** Das unsichtbare Fenster darunter war noch so groß wie die ganze Liste und fing Klicks auf den Desktop ab. Jetzt ist es nur so groß wie die Kopfzeile.
+- **Klick in eine freie Stelle der Liste (Linux)** übernimmt eine offene Notiz oder Unteraufgabe, wie ein Klick außerhalb.
+- In der Kurzhilfe heißt es jetzt überall „Eintrag“ statt „Punkt“.
 - **Notiz im Formular (Linux):** Nach „+ Notiz / Link“ landete das Getippte im Namensfeld. Jetzt springt der Cursor in die neue Notizzeile. Bleibt sie leer, verschwindet sie wieder.
 - **KDE: Abmelden und Neustart hängen nicht mehr:** Die Seitenleiste war für KDE ein Dock-Fenster, das sich beim Abmelden nicht schließen ließ („Plasma-Arbeitsflächenbereich hat sich nicht beendet“, bis zu 2 Minuten Warten). Jetzt geht das Abmelden sofort, auch wenn die Liste gerade ausgefahren ist.
 

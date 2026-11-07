@@ -108,6 +108,13 @@ Rectangle {
     Layout.preferredHeight: implicitHeight
     Layout.minimumHeight: implicitHeight
 
+    // Klick auf eine freie Stelle der Liste: ein offenes Eingabefeld (Notiz, Unteraufgabe) verliert den
+    // Fokus und uebernimmt den Text, wie beim Rausklicken. Der Klick selbst geht normal weiter.
+    MouseArea {
+        anchors.fill: parent
+        z: -1
+        onPressed: function(mouse) { view.forceActiveFocus(); mouse.accepted = false; }
+    }
 
     ColumnLayout {
         id: col

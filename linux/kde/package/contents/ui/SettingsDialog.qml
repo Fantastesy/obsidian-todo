@@ -306,7 +306,7 @@ Window {
                         current: dlg.cfg.revealPerItem
                         onPicked: v => dlg.cfg.revealPerItem = v
                     }
-                    Small { text: "Sekunden pro offenem Punkt (höchstens 2 Minuten)." }
+                    Small { text: "Sekunden pro offenem Eintrag (höchstens 2 Minuten)." }
                     Setting {
                         caption: "Erinnerungen"
                         options: [["15 Min vorher", 15], ["5 Min vorher", 5], ["Pünktlich", 0], ["Aus", "aus"]]
@@ -381,11 +381,11 @@ Window {
             }
             Repeater {
                 model: [
-                    ["Klick", "Punkt abhaken (nochmal klicken = rückgängig)"],
-                    ["Rechtsklick", "Punkt bearbeiten oder löschen"],
-                    ["Ziehen", "Punkt mit der Maus an eine andere Stelle schieben (neue Punkte mit Datum kommen von selbst nach oben)"],
+                    ["Klick", "Eintrag abhaken (nochmal klicken = rückgängig)"],
+                    ["Rechtsklick", "Eintrag bearbeiten oder löschen"],
+                    ["Ziehen", "Eintrag mit der Maus an eine andere Stelle schieben (neue Einträge mit Datum kommen von selbst nach oben)"],
                     ["+ Neuer Eintrag", "neuen Eintrag anlegen, überall auch mit dem Tastenkürzel (siehe oben)"],
-                    ["Enter", "speichert den Punkt sofort (Datum vorher wählen oder später ergänzen)"],
+                    ["Enter", "speichert den Eintrag sofort (Datum vorher wählen oder später ergänzen)"],
                     ["Titel „Todo“", "Liste in Obsidian öffnen"],
                     ["Seitenleiste", "Maus an den Bildschirmrand – die Liste gleitet herein"],
                     ["Anmelden, Aufwachen, Entsperren", "die Liste kommt kurz von selbst"],
