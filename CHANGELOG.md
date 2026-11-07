@@ -17,7 +17,7 @@
 - **Klick in eine freie Stelle der Liste (Linux)** übernimmt eine offene Notiz oder Unteraufgabe, wie ein Klick außerhalb.
 - In der Kurzhilfe heißt es jetzt überall „Eintrag“ statt „Punkt“.
 - **„Beides“ (Windows):** Wurde die Liste neu geladen (z. B. Einstellung geändert), während sie als Seitenleiste am Rand stand, landete sie danach an der falschen Stelle. Jetzt kehrt sie an ihren Desktop-Platz zurück.
-- **„Durchsichtig“ (Linux):** Die Schrift bleibt scharf und hat einen weichen dunklen Schein statt eines verwaschenen Schattens. Termine und Zähler sind heller, „heute“ und „überfällig“ kräftiger, Tags halb deckend mit weißer Schrift – so ist alles auch auf hellem Hintergrund gut lesbar.
+- **„Durchsichtig“ (Linux) sieht jetzt aus wie unter Windows:** scharfe Schrift mit hartem dunklem Schatten (1 Pixel nach rechts unten) statt des verwaschenen Schattens; Tags mit gleicher Fläche und kräftigerem Rand wie unter Windows.
 - **Notiz im Formular (Linux):** Nach „+ Notiz / Link“ landete das Getippte im Namensfeld. Jetzt springt der Cursor in die neue Notizzeile. Bleibt sie leer, verschwindet sie wieder.
 - **KDE: Abmelden und Neustart hängen nicht mehr:** Die Seitenleiste war für KDE ein Dock-Fenster, das sich beim Abmelden nicht schließen ließ („Plasma-Arbeitsflächenbereich hat sich nicht beendet“, bis zu 2 Minuten Warten). Jetzt geht das Abmelden sofort, auch wenn die Liste gerade ausgefahren ist.
 

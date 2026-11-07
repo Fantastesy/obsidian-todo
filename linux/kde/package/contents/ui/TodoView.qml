@@ -116,34 +116,20 @@ Rectangle {
         onPressed: function(mouse) { view.forceActiveFocus(); mouse.accepted = false; }
     }
 
-    // Durchsichtig: weicher dunkler Schein hinter Schrift und Knoepfen (wie KDE bei Desktop-Symbolen),
-    // damit alles auch auf hellem Hintergrund lesbar bleibt. Die Schrift selbst liegt scharf darueber:
-    // der Effekt zeichnet nur eine schwarze, weichgezeichnete Kopie der Spalte darunter.
-    MultiEffect {            // breiter, weicher Schein
+    // Durchsichtig: harter dunkler Schatten 1 px nach rechts unten wie unter Windows (Rainmeter
+    // StringEffect=Shadow, FontEffectColor 0,0,0,210). Eine schwarze Kopie der Spalte liegt versetzt
+    // darunter, die Schrift selbst bleibt scharf obendrauf.
+    MultiEffect {
         visible: Plasmoid.configuration.opacity <= 1
         source: col
-        anchors.fill: col
-        autoPaddingEnabled: true
+        x: col.x + 1
+        y: col.y + 1
+        width: col.width
+        height: col.height
         colorization: 1.0
         colorizationColor: "black"
         brightness: -1.0
-        blurEnabled: true
-        blurMax: 24
-        blur: 0.8
-        opacity: 0.7
-    }
-    MultiEffect {            // enger, dichter Rand direkt an der Schrift
-        visible: Plasmoid.configuration.opacity <= 1
-        source: col
-        anchors.fill: col
-        autoPaddingEnabled: true
-        colorization: 1.0
-        colorizationColor: "black"
-        brightness: -1.0
-        blurEnabled: true
-        blurMax: 6
-        blur: 0.6
-        opacity: 0.9
+        opacity: 210 / 255
     }
 
     ColumnLayout {

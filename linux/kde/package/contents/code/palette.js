@@ -39,21 +39,19 @@ function bg(opacity) {
     return "#" + (a.length < 2 ? "0" + a : a) + "0C0C12";
 }
 
-// clear = Hintergrund "Durchsichtig": Grau waere auf hellem Hintergrund kaum lesbar -> heller
-function muted(clear) { return clear ? "#FFEDEDF3" : done; }
+// Termine/Zaehler: in allen Hintergruenden wie unter Windows (clear bleibt fuer spaetere Anpassungen)
+function muted(clear) { return done; }
 function dueColor(state, clear) {
-    // Durchsichtig: kraeftigere Farben, die blassen waeren auf hellem Hintergrund verwaschen
-    if (state === "over") return clear ? "#FFFF4D4D" : over;
-    if (state === "today") return clear ? "#FFFFA01E" : today;
+    if (state === "over") return over;
+    if (state === "today") return today;
     return muted(clear);
 }
 
 // Tag-Farben: wie die Akzentfarben, dazu grau. Etikett = halbdurchsichtige Flaeche + helle Schrift
 var TAG_COLORS = ["lila", "blau", "gruen", "orange", "rot", "pink", "grau"];
 var GREY = ["#FF8C8C9A", "#FFD2D2DC"];
-// Durchsichtig: Etikett halb durchsichtig in der Tag-Farbe, Rand etwas kraeftiger, weisse Schrift
-// (25 % verschwinden auf hellem Hintergrund, deckend oder schwarz war zu aufdringlich)
-function tagFill(name, clear) { return (clear ? "#8C" : "#40") + (ACCENTS[name] || GREY)[0].substring(3); }
-function tagBorder(name, clear) { return clear ? "#D2" + (ACCENTS[name] || GREY)[0].substring(3) : tagFill(name); }
-function tagText(name, clear) { return clear ? "#FFFFFFFF" : (ACCENTS[name] || GREY)[1]; }
+// Etikett wie unter Windows (todo.lua tagPill): Flaeche Tag-Farbe mit Deckkraft 70, Rand 150, helle Schrift
+function tagFill(name, clear) { return "#46" + (ACCENTS[name] || GREY)[0].substring(3); }
+function tagBorder(name, clear) { return "#96" + (ACCENTS[name] || GREY)[0].substring(3); }
+function tagText(name, clear) { return (ACCENTS[name] || GREY)[1]; }
 function tagDot(name) { return (ACCENTS[name] || GREY)[0]; }
