@@ -175,3 +175,8 @@ function Reveal() revealing = true; leaveAt = nil; slideIn() end
 function RevealEnd() revealing = false; if not inList and not onEdge then leaveAt = os.time() + leaveDelay end end
 -- sofort hinaus (z. B. Knopf "Ausblenden")
 function Out() revealing = false; leaveAt = nil; slideOut() end
+-- Liste wurde neu geladen, waehrend sie als Panel am Rand stand (todo.lua hat sie schon an ihren Desktop-Platz
+-- zurueckgestellt): laufende Animation vergessen, sonst wuerde sie die Liste weiter verschieben
+function PanelReset()
+	state = 'hidden'; frame = 0; leaveAt = nil; revealing = false; inList = false
+end

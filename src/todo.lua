@@ -94,6 +94,20 @@ function setupMode()
 		SKIN:Bang('!Draggable', '1')
 		SKIN:Bang('!ZPos', '-2')
 		SKIN:Bang('!Show')
+		-- 'both': beim letzten Mal als Seitenleiste am Rand neu geladen -> zurueck an den Desktop-Platz,
+		-- und der Rand-Streifen vergisst seine laufende Animation (sonst schoebe er die Liste weiter)
+		local pf = SKIN:GetVariable('@') .. 'panel-pos.txt'
+		local fh = io.open(pf, 'rb')
+		if fh then
+			local px, py = (fh:read('*a') or ''):match('(-?%d+)%s+(-?%d+)')
+			fh:close()
+			os.remove(pf)
+			if px and mode == 'both' then
+				SKIN:Bang('!Move', px, py)
+				SKIN:Bang('!SetTransparency', '255')
+				SKIN:Bang('!CommandMeasure', 'MeasureSide', 'PanelReset()', 'ObsidianTodo\\Rand')
+			end
+		end
 		-- kommt von der Seitenleiste: wieder oben rechts auf den Desktop
 		if SKIN:GetVariable('LastMode') == 'sidebar' then
 			local right = (tonumber(SKIN:GetVariable('WORKAREAX')) or 0) + (tonumber(SKIN:GetVariable('WORKAREAWIDTH')) or 1920)
@@ -1455,10 +1469,16 @@ function HideReveal(button)
 end
 
 -- 'both': vom Desktop-Platz zum bildschirmhohen Panel am Rand und zurueck (aufgerufen von sidebar.lua)
+-- Desktop-Platz waehrend "Beides"-Panel zusaetzlich in einer Datei: wird die Liste neu geladen (Einstellung
+-- geaendert, Rainmeter-Neustart, Abmelden), solange sie als Seitenleiste am Rand steht, findet sie so zurueck
+local function panelFile() return SKIN:GetVariable('@') .. 'panel-pos.txt' end
+
 function PanelOn()
 	if panel then return end
 	panel = true
 	deskX, deskY = SKIN:GetX(), SKIN:GetY()
+	local fh = io.open(panelFile(), 'wb')
+	if fh then fh:write(deskX .. ' ' .. deskY); fh:close() end
 	SKIN:Bang('!Hide')
 	SKIN:Bang('!KeepOnScreen', '0')
 	SKIN:Bang('!Draggable', '0')
@@ -1467,6 +1487,7 @@ end
 function PanelOff()
 	if not panel then return end
 	panel = false
+	os.remove(panelFile())
 	SKIN:Bang('!Hide')
 	SKIN:Bang('!ZPos', '-2')
 	if deskX then SKIN:Bang('!Move', deskX, deskY) end
